@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布点 / Pieces</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Variables for Themes */
+        :root {
+            --theme-bg: #f3f4f6;
+            --theme-text: #1f2937;
+            --theme-primary: #111827;
+            --theme-primary-text: #ffffff;
+            --theme-sidebar: #f9fafb;
+            --theme-border: #e5e7eb;
+            --theme-panel: #ffffff;
+        }
+
+        [data-theme="dark"] { --theme-bg: #111827; --theme-text: #f3f4f6; --theme-primary: #f3f4f6; --theme-primary-text: #111827; --theme-sidebar: #1f2937; --theme-border: #374151; --theme-panel: #1f2937; }
+        [data-theme="celtic"] { --theme-bg: #064e3b; --theme-text: #ecfccb; --theme-primary: #ecfccb; --theme-primary-text: #064e3b; --theme-sidebar: #065f46; --theme-border: #047857; --theme-panel: #065f46; }
+        [data-theme="pink"] { --theme-bg: #fdf2f8; --theme-text: #831843; --theme-primary: #be185d; --theme-primary-text: #ffffff; --theme-sidebar: #fce7f3; --theme-border: #fbcfe8; --theme-panel: #ffffff; }
+        [data-theme="gray"] { --theme-bg: #0f172a; --theme-text: #f8fafc; --theme-primary: #e2e8f0; --theme-primary-text: #0f172a; --theme-sidebar: #1e293b; --theme-border: #334155; --theme-panel: #1e293b; }
+        [data-theme="ivory"] { --theme-bg: #fffff0; --theme-text: #4a4a4a; --theme-primary: #8b7d6b; --theme-primary-text: #ffffff; --theme-sidebar: #faf0e6; --theme-border: #eed5b7; --theme-panel: #ffffff; }
+        [data-theme="hermes"] { --theme-bg: #431407; --theme-text: #ffedd5; --theme-primary: #fdba74; --theme-primary-text: #431407; --theme-sidebar: #7c2d12; --theme-border: #9a3412; --theme-panel: #7c2d12; }
+        [data-theme="grass"] { --theme-bg: #f7fee7; --theme-text: #3f6212; --theme-primary: #65a30d; --theme-primary-text: #ffffff; --theme-sidebar: #ecfccb; --theme-border: #d9f99d; --theme-panel: #ffffff; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background-color: var(--theme-bg); 
+            color: var(--theme-text);
+            overflow: hidden; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+
+        .pin { 
+            position: absolute;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+        }
+        .pin:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 4px 8px rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.8); z-index: 50; }
+        .pin.selected { transform: translate(-50%, -50%) scale(1.2); border: 2px solid #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); z-index: 51; }
+        
+        /* 展示模式下通过Tab选中的焦点样式 */
+        .pin.play-focus { transform: translate(-50%, -50%) scale(1.3); border: 3px solid #ffffff; box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.8); z-index: 52; }
+
+        .custom-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--theme-border);
+            border-radius: 4px;
+            padding: 8px;
+            color: var(--theme-text);
+            transition: border-color 0.2s;
+        }
+        .custom-input:focus { outline: none; border-color: var(--theme-primary); }
+        
+        .minimal-input { border: none; background: transparent; outline: none; width: 100%; border-bottom: 1px solid transparent; transition: border-color 0.2s; color: inherit; }
+        .minimal-input:focus { border-bottom: 1px solid var(--theme-primary); }
+
+        .title-badge { width: 4px; height: 1.2em; background-color: var(--theme-primary); display: inline-block; margin-right: 8px; vertical-align: middle; border-radius: 2px; }
+
+        .cover-bg {
+            background: linear-gradient(135deg, var(--theme-sidebar) 0%, var(--theme-bg) 100%);
+            position: absolute; inset: 0; z-index: 0;
+        }
+
+        .svg-spin-transition { transition: transform 0.2s ease; }
+
+        .theme-btn { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; flex-shrink: 0; }
+        .theme-btn:hover { transform: scale(1.15); }
+        .theme-btn.active { transform: scale(1.2); box-shadow: 0 0 0 2px var(--theme-panel), 0 0 0 4px var(--theme-primary); }
+
+        /* 详情弹窗中的缩略图焦点样式 */
+        .thumb-focus { outline: 4px solid #3b82f6; outline-offset: -4px; transform: scale(1.02); z-index: 10; transition: all 0.2s ease; }
+    </style>
+</head>
+<body class="flex h-screen w-screen antialiased">
+
+    <div id="app" class="flex flex-col w-full h-full relative" style="background-color: var(--theme-bg);">
+        
+        <header id="topbar" class="h-14 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm" style="background-color: var(--theme-panel); border-bottom: 1px solid var(--theme-border);">
+            <div class="flex items-center gap-2">
+                <svg class="w-6 h-6" style="color: var(--theme-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+                <h1 class="font-bold text-xl tracking-wider" style="color: var(--theme-primary);">布点 / Pieces</h1>
+            </div>
+            
+            <div class="flex items-center gap-4 text-sm font-medium">
+                <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-transparent border-none outline-none cursor-pointer hover:opacity-70">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                </select>
+                
+                <div class="w-px h-5 bg-gray-300 mx-1 opacity-50"></div>
+                
+                <!-- 颜色面板 -->
+                <div class="flex items-center gap-2 px-2 py-1 rounded-full" style="background-color: var(--theme-sidebar); border: 1px solid var(--theme-border);">
+                    <button onclick="setTheme('light')" class="theme-btn w-4 h-4 rounded-full border border-gray-300" data-target="light" style="background-color: #f8fafc;" title="纯白 (Light)"></button>
+                    <button onclick="setTheme('ivory')" class="theme-btn w-4 h-4 rounded-full border border-gray-300" data-target="ivory" style="background-color: #fef3c7;" title="象牙白 (Ivory)"></button>
+                    <button onclick="setTheme('pink')" class="theme-btn w-4 h-4 rounded-full border border-gray-300" data-target="pink" style="background-color: #fbcfe8;" title="粉紫 (Pink)"></button>
+                    <button onclick="setTheme('grass')" class="theme-btn w-4 h-4 rounded-full border border-gray-300" data-target="grass" style="background-color: #bef264;" title="草绿 (Grass)"></button>
+                    <button onclick="setTheme('hermes')" class="theme-btn w-4 h-4 rounded-full border border-gray-300" data-target="hermes" style="background-color: #fb923c;" title="爱马仕橙 (Hermes)"></button>
+                    <button onclick="setTheme('gray')" class="theme-btn w-4 h-4 rounded-full border border-gray-400" data-target="gray" style="background-color: #64748b;" title="星空灰 (Gray)"></button>
+                    <button onclick="setTheme('celtic')" class="theme-btn w-4 h-4 rounded-full border border-gray-400" data-target="celtic" style="background-color: #10b981;" title="凯尔特绿 (Celtic)"></button>
+                    <button onclick="setTheme('dark')" class="theme-btn w-4 h-4 rounded-full border border-gray-600" data-target="dark" style="background-color: #334155;" title="纯黑 (Dark)"></button>
+                </div>
+
+                <div class="w-px h-5 bg-gray-300 mx-1 opacity-50"></div>
+                
+                <button onclick="newProject()" class="flex items-center gap-1 hover:opacity-70 transition" data-i18n="newProj" title="Cmd/Ctrl + N">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 新建
+                </button>
+                <button onclick="exportData()" class="flex items-center gap-1 hover:opacity-70 transition" data-i18n="export" title="Cmd/Ctrl + S">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 导出
+                </button>
+                <label class="flex items-center gap-1 cursor-pointer hover:opacity-70 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> <span data-i18n="import">导入</span>
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+                
+                <div class="w-px h-5 bg-gray-300 mx-2 opacity-50"></div>
+                
+                <button onclick="openCompressModal()" class="flex items-center gap-1 hover:opacity-70 transition" data-i18n="compress" title="Cmd/Ctrl + Shift + C">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg> 压缩
+                </button>
+
+                <button onclick="toggleMode()" class="px-5 py-1.5 rounded-md shadow transition flex items-center gap-2" style="background-color: var(--theme-primary); color: var(--theme-primary-text);" title="Cmd/Ctrl + P">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg> <span data-i18n="play">展示</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden relative">
+            
+            <aside id="sidebar" class="w-64 flex flex-col z-10 transition-transform duration-300" style="background-color: var(--theme-sidebar); border-right: 1px solid var(--theme-border);">
+                <div class="p-4 border-b flex justify-between items-center" style="border-color: var(--theme-border);">
+                    <h2 class="text-sm font-bold opacity-70 tracking-wider uppercase" data-i18n="pages">页面导航</h2>
+                    <button onclick="addPage()" class="p-1 hover:bg-black/10 rounded transition" title="新建页面">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    </button>
+                </div>
+                <div id="pageList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+                <div class="p-4 text-xs font-mono opacity-40 text-center tracking-widest border-t" style="border-color: var(--theme-border);">PROGRAMMED BY RAYNEHU</div>
+            </aside>
+
+            <!-- 展示模式下的左侧抽屉栏 -->
+            <div id="playSidebar" class="absolute left-0 top-0 bottom-0 w-64 z-[60] shadow-2xl transition-transform duration-300 overflow-hidden hidden flex-col -translate-x-[calc(100%-12px)] hover:translate-x-0 group" style="background-color: var(--theme-sidebar); color: var(--theme-text); border-right: 1px solid var(--theme-border);">
+                <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 rounded-l group-hover:opacity-0 transition" style="background-color: var(--theme-primary); opacity: 0.3;"></div>
+                <div class="p-4 text-center text-sm font-bold opacity-50 border-b whitespace-nowrap uppercase tracking-wider pr-4" style="border-color: var(--theme-border);">MENU</div>
+                <div id="playPageList" class="flex-1 overflow-y-auto py-2"></div>
+            </div>
+
+            <main id="mainArea" class="flex-1 flex items-center justify-center relative overflow-hidden group min-h-0 min-w-0">
+                
+                <!-- 退出按钮 -->
+                <button id="exitPlayBtn" onclick="toggleMode()" class="hidden absolute top-6 right-6 z-50 px-5 py-2.5 rounded-full shadow-lg hover:opacity-80 transition flex items-center gap-2" style="background-color: var(--theme-primary); color: var(--theme-primary-text);" title="Esc">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> <span data-i18n="exit" class="font-bold">退出</span>
+                </button>
+
+                <div id="canvasWrapper" class="relative transition-all duration-300 w-full h-full flex items-center justify-center overflow-hidden">
+                    
+                    <!-- 封面设计 -->
+                    <div id="coverState" class="absolute inset-0 flex flex-col items-center justify-center z-10 hidden cover-bg p-4 sm:p-12">
+                        <div class="w-[850px] max-w-full aspect-auto min-h-[55vh] flex flex-col p-2.5 relative border" style="border-color: currentColor; color: var(--theme-text)">
+                            
+                            <div class="flex flex-col flex-1 border justify-center items-center relative p-8 sm:p-16" style="border-color: currentColor;">
+                                
+                                <div class="absolute top-0 left-0 w-8 h-8 border-t-[3px] border-l-[3px] -translate-x-[2px] -translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute top-0 right-0 w-8 h-8 border-t-[3px] border-r-[3px] translate-x-[2px] -translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-[3px] border-l-[3px] -translate-x-[2px] translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-[3px] border-r-[3px] translate-x-[2px] translate-y-[2px]" style="border-color: currentColor;"></div>
+
+                                <div class="w-full max-w-3xl flex flex-col items-center z-10">
+                                    <textarea id="coverProjectName" class="w-full text-center text-[32px] sm:text-[42px] font-light tracking-[0.1em] bg-transparent resize-none outline-none leading-relaxed overflow-hidden" rows="1" placeholder="PROJECT NAME" oninput="updateCoverField('projectName', this.value); adjustTextarea(this);"></textarea>
+                                    
+                                    <div class="w-32 h-px mx-auto my-12 opacity-40" style="background-color: currentColor;"></div>
+
+                                    <div class="flex flex-col sm:flex-row items-center justify-center gap-16 sm:gap-32 w-full mt-4">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg class="w-5 h-5 opacity-50 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2L15 8L12 22L9 8L12 2Z"></path><path d="M12 22V14"></path></svg>
+                                            <span class="text-[10px] tracking-widest uppercase opacity-40 font-mono">AUTHOR</span>
+                                            <input type="text" id="coverAuthor" class="bg-transparent outline-none text-center text-xl font-medium tracking-widest w-48 border-b border-opacity-20 pb-1" style="border-bottom-color: currentColor;" oninput="updateCoverField('author', this.value)">
+                                        </div>
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg class="w-5 h-5 opacity-50 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 11h18"></path></svg>
+                                            <span class="text-[10px] tracking-widest uppercase opacity-40 font-mono">DATE</span>
+                                            <input type="text" id="coverDate" class="bg-transparent outline-none text-center text-xl font-medium tracking-widest w-48 border-b border-opacity-20 pb-1" style="border-bottom-color: currentColor;" oninput="updateCoverField('date', this.value)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 封底设计 -->
+                    <div id="backcoverState" class="absolute inset-0 flex flex-col items-center justify-center z-10 hidden cover-bg p-4 sm:p-12">
+                        <div class="w-[850px] max-w-full aspect-auto min-h-[55vh] flex flex-col p-2.5 relative border" style="border-color: currentColor; color: var(--theme-text)">
+                            <div class="flex flex-col flex-1 border justify-center items-center relative p-8 sm:p-16" style="border-color: currentColor;">
+                                
+                                <div class="absolute top-0 left-0 w-8 h-8 border-t-[3px] border-l-[3px] -translate-x-[2px] -translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute top-0 right-0 w-8 h-8 border-t-[3px] border-r-[3px] translate-x-[2px] -translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-[3px] border-l-[3px] -translate-x-[2px] translate-y-[2px]" style="border-color: currentColor;"></div>
+                                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-[3px] border-r-[3px] translate-x-[2px] translate-y-[2px]" style="border-color: currentColor;"></div>
+
+                                <div class="w-full max-w-3xl flex flex-col items-center z-10">
+                                    <textarea id="backcoverTitle" class="w-full text-center text-[32px] sm:text-[42px] font-light tracking-[0.1em] bg-transparent resize-none outline-none leading-relaxed overflow-hidden" rows="1" placeholder="END OF DOCUMENT" oninput="updateCoverField('backcoverTitle', this.value); adjustTextarea(this);"></textarea>
+                                    
+                                    <div class="w-32 h-px mx-auto my-12 opacity-40" style="background-color: currentColor;"></div>
+
+                                    <div class="flex flex-col sm:flex-row items-center justify-center gap-16 sm:gap-32 w-full mt-4">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg class="w-5 h-5 opacity-50 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2L15 8L12 22L9 8L12 2Z"></path><path d="M12 22V14"></path></svg>
+                                            <span class="text-[10px] tracking-widest uppercase opacity-40 font-mono">AUTHOR</span>
+                                            <div id="bcAuthor" class="text-center text-xl font-medium tracking-widest w-48 border-b border-opacity-20 pb-1" style="border-bottom-color: currentColor;"></div>
+                                        </div>
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg class="w-5 h-5 opacity-50 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 11h18"></path></svg>
+                                            <span class="text-[10px] tracking-widest uppercase opacity-40 font-mono">DATE</span>
+                                            <div id="bcDate" class="text-center text-xl font-medium tracking-widest w-48 border-b border-opacity-20 pb-1" style="border-bottom-color: currentColor;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center z-0 hidden opacity-50">
+                        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p class="mb-4 font-medium" data-i18n="insertBg">请插入平面图或立面图作为底图</p>
+                        <label class="px-6 py-2 rounded shadow-md cursor-pointer transition font-medium" style="background-color: var(--theme-primary); color: var(--theme-primary-text);">
+                            <span data-i18n="uploadBtn">浏览文件</span>
+                            <input type="file" class="hidden" accept="image/*" onchange="uploadBgImage(event)">
+                        </label>
+                    </div>
+
+                    <div id="canvasContent" class="relative hidden w-fit h-fit max-w-full max-h-full">
+                        <img id="bgImageEl" class="max-w-full max-h-full block pointer-events-none" style="object-fit: contain;" src="" alt="Background">
+                        
+                        <div class="absolute top-6 left-10 z-30 flex items-center px-4 py-2 rounded shadow-sm backdrop-blur" style="background-color: var(--theme-panel); border: 1px solid var(--theme-border);">
+                            <div class="title-badge"></div>
+                            <input type="text" id="pageTitleInput" class="minimal-input text-xl font-bold w-64" oninput="updatePageTitle(this.value)">
+                        </div>
+
+                        <div id="pinsLayer" class="absolute inset-0 z-10" onclick="handleCanvasClick(event)" onmousemove="dragPin(event)" onmouseup="stopDragPin()" onmouseleave="stopDragPin()"></div>
+                    </div>
+
+                    <button id="generateTableBtn" onclick="showTableModal()" class="hidden absolute bottom-8 right-8 z-30 shadow-xl p-4 rounded-full hover:scale-105 transition group" style="background-color: var(--theme-panel); border: 1px solid var(--theme-border);" title="生成清单 (Cmd/Ctrl+T 或 S/L键)">
+                        <svg class="w-6 h-6" style="color: var(--theme-text);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </button>
+
+                </div>
+
+                <!-- 画布工具栏 -->
+                <div id="canvasToolbar" class="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full shadow-lg px-6 py-2 flex items-center gap-4 z-20" style="background-color: var(--theme-panel); border: 1px solid var(--theme-border);">
+                    <button onclick="document.querySelector('#emptyState input').click()" class="text-sm flex items-center gap-2 hover:opacity-70 transition font-medium" title="替换底图">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </button>
+                    <div class="w-px h-5 opacity-20" style="background-color: var(--theme-text);"></div>
+                    <button onclick="startAddingPin()" id="addPinBtn" class="p-2 rounded-full text-sm transition flex items-center justify-center font-bold" style="background-color: var(--theme-primary); color: var(--theme-primary-text);" title="添加部品点位">
+                        <svg class="w-5 h-5 svg-spin-transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    </button>
+                </div>
+            </main>
+
+            <aside id="propertyPanel" class="w-80 flex flex-col z-20 transition-transform duration-300 translate-x-full absolute right-0 top-0 bottom-0 shadow-[-4px_0_20px_rgba(0,0,0,0.1)]" style="background-color: var(--theme-panel); border-left: 1px solid var(--theme-border);"></aside>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="playDetailModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300" onclick="closePlayDetail(event)">
+        <div class="bg-white rounded-2xl shadow-2xl w-[900px] max-w-[95vw] max-h-[85vh] flex overflow-hidden transform scale-95 transition-transform duration-300 text-gray-900" id="playDetailContent" onclick="event.stopPropagation()"></div>
+    </div>
+
+    <div id="lightbox" class="fixed inset-0 bg-black/95 z-[70] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <button onclick="closeLightbox()" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 z-10 transition"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <button onclick="prevLightboxImage()" class="absolute left-6 top-1/2 -translate-y-1/2 text-white/30 hover:text-white p-4 z-10 transition"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+        <button onclick="nextLightboxImage()" class="absolute right-6 top-1/2 -translate-y-1/2 text-white/30 hover:text-white p-4 z-10 transition"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+        <img id="lightboxImg" src="" class="max-w-full max-h-[90vh] object-contain transition-opacity duration-200" alt="Full screen image">
+        <div id="lightboxIndicator" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 text-sm tracking-widest font-mono">1 / 1</div>
+    </div>
+
+    <!-- 报表弹窗 -->
+    <div id="tableModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300" onclick="closeTableModal(event)">
+        <div class="bg-white rounded-xl shadow-2xl w-[1400px] max-w-[95vw] h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" onclick="event.stopPropagation()">
+            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-3">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span data-i18n="tableTitle">部品清单</span> - <span id="tableNameDisplay" class="text-gray-500"></span>
+                </h3>
+                <button onclick="closeTableModal()" class="text-gray-400 hover:bg-gray-100 rounded-full p-2 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="flex-1 overflow-auto px-8 py-4">
+                <table class="w-full text-center border-collapse text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b-2 border-gray-800">
+                            <th class="pb-3 px-2 text-center w-20" data-i18n="colImg">缩略图</th>
+                            <th class="pb-3 px-2 text-center w-16" data-i18n="colTag">标签</th>
+                            <th class="pb-3 px-2 text-center w-48" data-i18n="colName">部品名称</th>
+                            <th class="pb-3 px-2 text-center w-32" data-i18n="colSize">尺寸</th>
+                            <th class="pb-3 px-2 text-center w-32" data-i18n="colMat">材质</th>
+                            <th class="pb-3 px-2 text-center w-32" data-i18n="colBrand">品牌/厂家</th>
+                            <th class="pb-3 px-2 text-center w-24" data-i18n="colPrice">价格</th>
+                            <th class="pb-3 px-2 text-center w-auto" data-i18n="colNote">备注</th>
+                            <th class="pb-3 px-2 text-center w-20" data-i18n="colCount">数量</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-gray-800 font-medium"></tbody>
+                    <tfoot>
+                        <tr class="font-bold border-t-2 border-gray-800 text-gray-900">
+                            <td colspan="6" class="py-4 px-2 text-right pr-4 align-middle" data-i18n="totalLabel">总计</td>
+                            <td class="py-4 px-2 text-center text-red-600 align-middle" id="totalPriceDisplay"></td>
+                            <td></td>
+                            <td class="py-4 px-2 text-center text-lg align-middle" id="totalCountDisplay"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片压缩弹窗 -->
+    <div id="compressModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] hidden flex items-center justify-center opacity-0 transition-opacity duration-300" onclick="closeCompressModal(event)">
+        <div class="bg-white rounded-xl shadow-2xl w-[400px] p-8 flex flex-col transform scale-95 transition-transform duration-300" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-bold mb-2 text-gray-900" data-i18n="compressTitle">压缩图片</h3>
+            <p class="text-sm text-gray-500 mb-6" data-i18n="compressDesc">减小图片分辨率以缩小导出文件体积</p>
+            <div class="space-y-4 mb-8">
+                <label class="flex items-center gap-3 text-gray-700 cursor-pointer hover:bg-gray-50 p-2 rounded transition">
+                    <input type="radio" name="compRes" value="1920" class="w-4 h-4 text-blue-600 focus:ring-blue-500" checked>
+                    <span data-i18n="resHigh">高清 (最大 1920px)</span>
+                </label>
+                <label class="flex items-center gap-3 text-gray-700 cursor-pointer hover:bg-gray-50 p-2 rounded transition">
+                    <input type="radio" name="compRes" value="1280" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <span data-i18n="resMed">标准 (最大 1280px)</span>
+                </label>
+                <label class="flex items-center gap-3 text-gray-700 cursor-pointer hover:bg-gray-50 p-2 rounded transition">
+                    <input type="radio" name="compRes" value="800" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <span data-i18n="resLow">小体积 (最大 800px)</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeCompressModal()" class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition" data-i18n="cancel">取消</button>
+                <button onclick="executeCompression()" id="btnExecuteCompress" class="px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center min-w-[120px]">
+                    <span data-i18n="btnCompress">开始压缩</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            zh: {
+                export: "导出", import: "导入", newProj: "新建", confirmNew: "是否确认开启新项目？未导出的数据将会丢失。", play: "展示", exit: "退出", pages: "页面导航", insertBg: "请插入平面图或立面图作为底图", uploadBtn: "浏览文件", tableTitle: "部品清单", colImg: "图示", colTag: "标签", colName: "名称", colSize: "尺寸", colMat: "材质", colBrand: "品牌/厂家", colPrice: "价格", colNote: "备注", colCount: "数量", totalLabel: "总计", cover: "封面", backcover: "封底", totalList: "总清单", propTitle: "部品属性", name: "部品名称", tag: "色彩标签", size: "尺寸 (W*D*H)", mat: "主要材质", price: "价格信息", brand: "品牌 / 厂家", note: "备注说明", ref: "参考图片", dup: "复制", del: "删除", sync: "全局同步",
+                compress: "压缩", compressTitle: "压缩图片", compressDesc: "减小图片分辨率以缩小导出文件体积", resHigh: "高清 (最大 1920px)", resMed: "标准 (最大 1280px)", resLow: "小体积 (最大 800px)", cancel: "取消", btnCompress: "开始压缩", compressDone: "压缩完成！共处理图片:"
+            },
+            en: {
+                export: "Export", import: "Import", newProj: "New", confirmNew: "Start new project? Unsaved data will be lost.", play: "Present", exit: "Exit", pages: "Pages", insertBg: "Insert floor plan or elevation as background", uploadBtn: "Browse", tableTitle: "Pieces List", colImg: "Img", colTag: "Tag", colName: "Name", colSize: "Dim", colMat: "Material", colBrand: "Brand", colPrice: "Price", colNote: "Note", colCount: "Qty", totalLabel: "Total", cover: "Cover", backcover: "Back Cover", totalList: "Master List", propTitle: "Properties", name: "Name", tag: "Color Tag", size: "Dimensions", mat: "Material", price: "Price", brand: "Brand/Mfr", note: "Notes", ref: "Gallery", dup: "Duplicate", del: "Delete", sync: "Sync All",
+                compress: "Compress", compressTitle: "Compress Images", compressDesc: "Reduce image resolution to shrink export size", resHigh: "High (Max 1920px)", resMed: "Medium (Max 1280px)", resLow: "Small (Max 800px)", cancel: "Cancel", btnCompress: "Compress Now", compressDone: "Compression complete! Processed:"
+            },
+            ja: {
+                export: "出力", import: "入力", newProj: "新規", confirmNew: "新しいプロジェクトを開始しますか？未保存のデータは失われます。", play: "プレゼン", exit: "終了", pages: "ページ", insertBg: "背景として平面図または立面図を挿入", uploadBtn: "参照", tableTitle: "ピースリスト", colImg: "画像", colTag: "タグ", colName: "名前", colSize: "寸法", colMat: "素材", colBrand: "ブランド", colPrice: "価格", colNote: "備考", colCount: "数量", totalLabel: "合計", cover: "表紙", backcover: "裏表紙", totalList: "総リスト", propTitle: "プロパティ", name: "名前", tag: "カラー", size: "寸法", mat: "素材", price: "価格", brand: "ブランド/メーカー", note: "備考", ref: "ギャラリー", dup: "複製", del: "削除", sync: "全て同期",
+                compress: "圧縮", compressTitle: "画像を圧縮", compressDesc: "画像解像度を下げてファイルサイズを縮小します", resHigh: "大 (最大 1920px)", resMed: "中 (最大 1280px)", resLow: "小 (最大 800px)", cancel: "キャンセル", btnCompress: "圧縮開始", compressDone: "圧縮完了！処理枚数:"
+            }
+        };
+        let currentLang = 'zh';
+
+        const colorPalette = [
+            '#e11d48', '#dc2626', '#ea580c', '#f59e0b', '#eab308', '#84cc16', '#65a30d', '#16a34a',
+            '#059669', '#0d9488', '#0284c7', '#2563eb', '#4f46e5', '#7c3aed', '#c026d3', '#db2777'
+        ];
+
+        let appData = {
+            projectName: '', author: '', date: new Date().toLocaleDateString(), backcoverTitle: 'THANKS',
+            pages: [ 
+                { id: generateId(), type: 'cover', title: '' }, 
+                { id: generateId(), type: 'plan', title: '', bgImage: null, items: [] },
+                { id: generateId(), type: 'backcover', title: '' }
+            ]
+        };
+        
+        let currentPageIndex = 0, selectedItemId = null, mode = 'edit', isDragging = false, dragItem = null, addMode = false;
+        
+        // 拖放状态变量
+        let draggedPageIndex = null;
+
+        // 快捷键系统相关的焦点状态变量
+        let playFocusedPinId = null; 
+        let playFocusedImageIndex = 0;
+        let currentDetailItem = null;
+        let currentLightboxImages = [], currentLightboxIndex = 0;
+        let justClosedLightbox = false; // 用于判定连贯退出的智能标记
+
+        document.addEventListener('DOMContentLoaded', () => { setTheme('light'); renderSidebar(); renderCanvas(); updateI18n(); setupPasteListener(); });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && mode === 'play') {
+                toggleMode();
+            }
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+            if (!document.webkitFullscreenElement && mode === 'play') {
+                toggleMode();
+            }
+        });
+
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+        function getCurrentPage() { return appData.pages[currentPageIndex]; }
+
+        function changeLanguage(lang) { currentLang = lang; updateI18n(); renderSidebar(); renderPropertyPanel(); }
+        function updateI18n() {
+            document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if(i18n[currentLang][key]) el.innerText = i18n[currentLang][key]; });
+        }
+        function setTheme(theme) { 
+            document.documentElement.setAttribute('data-theme', theme); 
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            const targetBtn = document.querySelector(`.theme-btn[data-target="${theme}"]`);
+            if(targetBtn) targetBtn.classList.add('active');
+        }
+
+        function newProject() {
+            if(confirm(i18n[currentLang].confirmNew)) {
+                appData = { 
+                    projectName: '', author: '', date: new Date().toLocaleDateString(), backcoverTitle: 'THANKS',
+                    pages: [ 
+                        { id: generateId(), type: 'cover', title: '' }, 
+                        { id: generateId(), type: 'plan', title: '', bgImage: null, items: [] },
+                        { id: generateId(), type: 'backcover', title: '' }
+                    ] 
+                };
+                currentPageIndex = 0; selectedItemId = null; playFocusedPinId = null;
+                renderSidebar(); renderCanvas(); closePropertyPanel();
+            }
+        }
+
+        function renderSidebar() {
+            const listEl = document.getElementById('pageList'), playListEl = document.getElementById('playPageList');
+            listEl.innerHTML = ''; playListEl.innerHTML = '';
+            
+            appData.pages.forEach((page, index) => {
+                const isActive = index === currentPageIndex;
+                let displayTitleStr = page.title || '';
+                if(page.type === 'cover') displayTitleStr = `[${i18n[currentLang].cover}]`;
+                if(page.type === 'backcover') displayTitleStr = `[${i18n[currentLang].backcover}]`;
+                
+                const displayTitle = `<span class="opacity-40 font-mono mr-2">${index} - </span><span class="truncate">${displayTitleStr}</span>`;
+                
+                const el = document.createElement('div');
+                el.className = `p-3 rounded cursor-pointer transition flex justify-between items-center group ${isActive ? 'shadow-sm border' : 'hover:opacity-70'}`;
+                if(isActive) { el.style.backgroundColor = 'var(--theme-panel)'; el.style.borderColor = 'var(--theme-primary)'; }
+                else { el.style.backgroundColor = 'transparent'; el.style.border = '1px solid transparent'; }
+                
+                const canDelete = page.type !== 'cover' && page.type !== 'backcover' && appData.pages.length > 3;
+                const canDuplicate = page.type === 'plan';
+
+                el.innerHTML = `
+                    <div class="text-sm font-medium flex items-center w-[75%] ${isActive ? 'opacity-100' : 'opacity-70'} pointer-events-none">${displayTitle}</div>
+                    <div class="flex gap-1">
+                        ${canDuplicate && mode === 'edit' ? `<button onclick="duplicatePage(${index}, event)" class="opacity-0 group-hover:opacity-100 p-1 text-blue-500 hover:bg-blue-50 rounded transition" title="${i18n[currentLang].dup}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg></button>` : ''}
+                        ${canDelete && mode === 'edit' ? `<button onclick="deletePage(${index}, event)" class="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-50 rounded transition" title="${i18n[currentLang].del}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>` : ''}
+                    </div>
+                `;
+                el.onclick = () => switchPage(index);
+                
+                // Drag and drop sorting logic
+                if (mode === 'edit') {
+                    if (page.type === 'plan') {
+                        el.draggable = true;
+                        el.ondragstart = (e) => {
+                            draggedPageIndex = index;
+                            e.dataTransfer.effectAllowed = 'move';
+                            setTimeout(() => el.classList.add('opacity-40', 'border-dashed'), 0);
+                        };
+                        el.ondragend = (e) => {
+                            draggedPageIndex = null;
+                            renderSidebar();
+                        };
+                    }
+                    
+                    el.ondragover = (e) => {
+                        e.preventDefault(); 
+                        if (draggedPageIndex === null || draggedPageIndex === index) return;
+                        const rect = el.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        if (e.clientY < midY) {
+                            el.style.borderTop = '2px solid var(--theme-primary)';
+                            el.style.borderBottom = '1px solid transparent';
+                        } else {
+                            el.style.borderBottom = '2px solid var(--theme-primary)';
+                            el.style.borderTop = '1px solid transparent';
+                        }
+                    };
+                    
+                    el.ondragleave = () => {
+                        el.style.borderTop = '1px solid transparent';
+                        el.style.borderBottom = '1px solid transparent';
+                    };
+                    
+                    el.ondrop = (e) => {
+                        e.preventDefault();
+                        el.style.borderTop = '1px solid transparent';
+                        el.style.borderBottom = '1px solid transparent';
+                        if (draggedPageIndex === null || draggedPageIndex === index) return;
+                        
+                        const rect = el.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        let targetIndex = index;
+                        
+                        if (e.clientY >= midY) {
+                            targetIndex++;
+                        }
+                        
+                        if (targetIndex < 1) targetIndex = 1;
+                        if (targetIndex > appData.pages.length - 1) targetIndex = appData.pages.length - 1;
+                        
+                        if (targetIndex > draggedPageIndex) {
+                            targetIndex--;
+                        }
+                        
+                        if (targetIndex !== draggedPageIndex) {
+                            const movedPage = appData.pages.splice(draggedPageIndex, 1)[0];
+                            appData.pages.splice(targetIndex, 0, movedPage);
+                            
+                            if (currentPageIndex === draggedPageIndex) {
+                                currentPageIndex = targetIndex;
+                            } else if (currentPageIndex > draggedPageIndex && currentPageIndex <= targetIndex) {
+                                currentPageIndex--;
+                            } else if (currentPageIndex < draggedPageIndex && currentPageIndex >= targetIndex) {
+                                currentPageIndex++;
+                            }
+                            renderSidebar();
+                        }
+                    };
+                }
+
+                listEl.appendChild(el);
+
+                const playEl = document.createElement('div');
+                playEl.className = `p-4 cursor-pointer transition flex items-center gap-4 hover:opacity-70`;
+                if(isActive) {
+                    playEl.style.backgroundColor = 'var(--theme-panel)';
+                    playEl.style.borderLeft = '4px solid var(--theme-primary)';
+                } else {
+                    playEl.style.backgroundColor = 'transparent';
+                    playEl.style.borderLeft = '4px solid transparent';
+                }
+                playEl.innerHTML = `<div class="w-6 text-center font-mono text-sm opacity-50">${index}</div><div class="truncate text-sm pr-4">${displayTitleStr}</div>`;
+                playEl.onclick = () => switchPage(index);
+                playListEl.appendChild(playEl);
+            });
+        }
+
+        function switchPage(index) { 
+            currentPageIndex = index; 
+            selectedItemId = null; 
+            playFocusedPinId = null; // 切换页面时重置焦点
+            renderSidebar(); 
+            renderCanvas(); 
+            closePropertyPanel(); 
+        }
+
+        function adjustTextarea(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        function renderCanvas() {
+            const page = getCurrentPage();
+            const canvasContent = document.getElementById('canvasContent'), 
+                  emptyState = document.getElementById('emptyState'), 
+                  coverState = document.getElementById('coverState'), 
+                  backcoverState = document.getElementById('backcoverState'),
+                  toolbar = document.getElementById('canvasToolbar'), 
+                  tableBtn = document.getElementById('generateTableBtn');
+            
+            coverState.classList.add('hidden'); 
+            backcoverState.classList.add('hidden');
+            emptyState.classList.add('hidden'); 
+            canvasContent.classList.add('hidden'); 
+            toolbar.style.display = 'none';
+
+            if (mode === 'play' && (page.type === 'plan' || page.type === 'backcover')) { 
+                tableBtn.classList.remove('hidden'); 
+            } else { 
+                tableBtn.classList.add('hidden'); 
+            }
+
+            if (page.type === 'cover') {
+                coverState.classList.remove('hidden');
+                const pName = document.getElementById('coverProjectName');
+                pName.value = appData.projectName || '';
+                setTimeout(() => adjustTextarea(pName), 0);
+
+                document.getElementById('coverAuthor').value = appData.author || ''; 
+                document.getElementById('coverDate').value = appData.date || '';
+                ['coverProjectName', 'coverAuthor', 'coverDate'].forEach(id => { document.getElementById(id).disabled = (mode === 'play'); });
+            
+            } else if (page.type === 'backcover') {
+                backcoverState.classList.remove('hidden');
+                const bcTitle = document.getElementById('backcoverTitle');
+                bcTitle.value = appData.backcoverTitle || 'THANKS';
+                setTimeout(() => adjustTextarea(bcTitle), 0);
+
+                document.getElementById('bcAuthor').innerText = appData.author || '—';
+                document.getElementById('bcDate').innerText = appData.date || '—';
+                bcTitle.disabled = (mode === 'play');
+
+            } else {
+                if(mode === 'edit') toolbar.style.display = 'flex';
+                document.getElementById('pageTitleInput').value = page.title || '';
+                if (page.bgImage) { 
+                    canvasContent.classList.remove('hidden'); 
+                    document.getElementById('bgImageEl').src = page.bgImage; 
+                } else { 
+                    if(mode === 'edit') emptyState.classList.remove('hidden'); 
+                }
+                renderPins();
+            }
+        }
+
+        function renderPins() {
+            const page = getCurrentPage(); if(page.type === 'cover' || page.type === 'backcover') return;
+            const pinsLayer = document.getElementById('pinsLayer'); pinsLayer.innerHTML = '';
+            page.items.forEach(item => {
+                const pin = document.createElement('div');
+                const isSelected = item.id === selectedItemId && mode === 'edit';
+                const isPlayFocused = item.id === playFocusedPinId && mode === 'play';
+                
+                pin.className = `pin w-7 h-7 flex items-center justify-center text-white text-xs font-bold shadow-lg ${isSelected ? 'selected' : ''} ${isPlayFocused ? 'play-focus' : ''} ${addMode ? 'pointer-events-none' : ''}`;
+                pin.style.left = `${item.x}%`; pin.style.top = `${item.y}%`;
+                pin.style.backgroundColor = hexToRgba(item.color || colorPalette[0], 0.85); pin.dataset.id = item.id;
+                pin.innerHTML = `<div class="w-2 h-2 rounded-full bg-white/70"></div>`;
+                
+                if (mode === 'edit') { 
+                    pin.onmousedown = (e) => startDragPin(e, item.id); 
+                    pin.onclick = (e) => { e.stopPropagation(); if(!isDragging) selectPin(item.id); }; 
+                } else { 
+                    pin.onclick = (e) => { e.stopPropagation(); playFocusedPinId = item.id; renderPins(); openPlayDetail(item); }; 
+                }
+                pinsLayer.appendChild(pin);
+            });
+        }
+
+        function renderPropertyPanel() {
+            const panel = document.getElementById('propertyPanel');
+            if (mode !== 'edit' || !selectedItemId) { closePropertyPanel(); return; }
+            const page = getCurrentPage(); const item = page.items.find(i => i.id === selectedItemId);
+            if (!item) return;
+
+            panel.classList.remove('translate-x-full');
+
+            const colorOptions = colorPalette.map(c => 
+                `<div onclick="updateItemField('color', '${c}')" class="w-6 h-6 rounded-full cursor-pointer transition transform hover:scale-110 flex items-center justify-center shadow-sm" style="background-color: ${c}; border: 2px solid ${item.color === c ? 'var(--theme-text)' : 'transparent'}">
+                    ${item.color === c ? `<svg class="w-3 h-3 text-white mix-blend-difference" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>` : ''}
+                </div>`
+            ).join('');
+
+            const imagesHTML = (item.images || []).map((img, idx) => `
+                <div class="relative w-full pt-[100%] bg-gray-100 rounded border border-gray-200 overflow-hidden group">
+                    <img src="${img}" class="absolute inset-0 w-full h-full object-cover">
+                    <button onclick="deleteItemImage(${idx})" class="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition shadow"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                </div>
+            `).join('');
+
+            const t = i18n[currentLang];
+
+            panel.innerHTML = `
+                <div class="p-4 border-b flex justify-between items-center shrink-0" style="border-color: var(--theme-border);">
+                    <h3 class="font-bold opacity-80">${t.propTitle}</h3>
+                    <button onclick="closePropertyPanel()" class="hover:opacity-60"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-5 space-y-5 hide-scroll text-sm">
+                    <div><label class="block text-xs font-medium opacity-60 mb-1">${t.name}</label><input type="text" value="${item.desc || ''}" oninput="updateItemField('desc', this.value)" class="custom-input"></div>
+                    <div><label class="block text-xs font-medium opacity-60 mb-2">${t.tag}</label><div class="grid grid-cols-8 gap-2">${colorOptions}</div></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="block text-xs font-medium opacity-60 mb-1">${t.size}</label><input type="text" value="${item.dimensions || ''}" oninput="updateItemField('dimensions', this.value)" class="custom-input"></div>
+                        <div><label class="block text-xs font-medium opacity-60 mb-1">${t.mat}</label><input type="text" value="${item.material || ''}" oninput="updateItemField('material', this.value)" class="custom-input"></div>
+                        <div><label class="block text-xs font-medium opacity-60 mb-1">${t.price}</label><input type="text" value="${item.price || ''}" oninput="updateItemField('price', this.value)" class="custom-input"></div>
+                        <div><label class="block text-xs font-medium opacity-60 mb-1">${t.brand}</label><input type="text" value="${item.brand || ''}" oninput="updateItemField('brand', this.value)" class="custom-input"></div>
+                    </div>
+                    <div><label class="block text-xs font-medium opacity-60 mb-1">${t.note}</label><textarea oninput="updateItemField('note', this.value)" class="custom-input h-20 resize-none">${item.note || ''}</textarea></div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-xs font-medium opacity-60">${t.ref} (${(item.images || []).length})</label>
+                            <label class="text-xs text-blue-500 hover:text-blue-600 cursor-pointer font-medium">+ Add<input type="file" multiple class="hidden" accept="image/*" onchange="uploadItemImages(event)"></label>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">${imagesHTML}</div>
+                    </div>
+                </div>
+                <div class="p-4 border-t flex gap-2 shrink-0" style="border-color: var(--theme-border);">
+                    <button onclick="syncSimilarItems()" class="flex-1 py-2 rounded text-xs transition border text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-100" title="同步属性给所有页面的同名点位">${t.sync}</button>
+                    <button onclick="duplicatePin()" class="flex-1 py-2 rounded text-xs transition border" style="border-color: var(--theme-border);">${t.dup}</button>
+                    <button onclick="deleteSelectedPin()" class="flex-1 py-2 rounded text-xs text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100">${t.del}</button>
+                </div>
+            `;
+        }
+
+        function closePropertyPanel() { document.getElementById('propertyPanel').classList.add('translate-x-full'); selectedItemId = null; renderPins(); }
+        
+        function addPage() { 
+            appData.pages.splice(appData.pages.length - 1, 0, { id: generateId(), type: 'plan', title: '', bgImage: null, items: [] }); 
+            currentPageIndex = appData.pages.length - 2; 
+            renderSidebar(); 
+            renderCanvas(); 
+            closePropertyPanel(); 
+        }
+
+        function duplicatePage(index, event) {
+            event.stopPropagation();
+            const pageToCopy = appData.pages[index];
+            if (pageToCopy.type !== 'plan') return;
+            
+            const newPage = JSON.parse(JSON.stringify(pageToCopy));
+            newPage.id = generateId();
+            newPage.title = (newPage.title || 'Page') + ' (Copy)';
+            if(newPage.items) {
+                newPage.items.forEach(item => { item.id = generateId(); });
+            }
+            
+            appData.pages.splice(index + 1, 0, newPage);
+            currentPageIndex = index + 1;
+            renderSidebar();
+            renderCanvas();
+            closePropertyPanel();
+        }
+        
+        function deletePage(index, event) { 
+            event.stopPropagation(); 
+            const page = appData.pages[index];
+            if(page.type === 'cover' || page.type === 'backcover') return;
+            if(appData.pages.length <= 3) return;
+            if(confirm("Delete this page?")) { 
+                appData.pages.splice(index, 1); 
+                if(currentPageIndex >= appData.pages.length) currentPageIndex = appData.pages.length - 1; 
+                renderSidebar(); renderCanvas(); closePropertyPanel(); 
+            } 
+        }
+
+        function updateCoverField(field, val) { appData[field] = val; }
+        function updatePageTitle(val) { getCurrentPage().title = val; renderSidebar(); }
+        function uploadBgImage(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { getCurrentPage().bgImage = e.target.result; renderCanvas(); }; reader.readAsDataURL(file); }
+
+        function setupPasteListener() {
+            document.addEventListener('paste', (e) => {
+                if (mode !== 'edit') return;
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                let imageFile = null;
+                for (let item of items) { if (item.type.indexOf('image') === 0) { imageFile = item.getAsFile(); break; } }
+                if (!imageFile) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64Data = event.target.result;
+                    if (selectedItemId) { const item = getCurrentPage().items.find(i => i.id === selectedItemId); if (item) { if (!item.images) item.images = []; item.images.push(base64Data); renderPropertyPanel(); } } 
+                    else { const page = getCurrentPage(); if (page.type === 'plan') { page.bgImage = base64Data; renderCanvas(); } }
+                };
+                reader.readAsDataURL(imageFile);
+            });
+        }
+
+        function setAddModeState(isActive) {
+            addMode = isActive;
+            const svg = document.querySelector('#addPinBtn svg');
+            if(isActive) {
+                svg.classList.add('rotate-45');
+                document.getElementById('canvasContent').style.cursor = 'crosshair'; 
+            } else {
+                svg.classList.remove('rotate-45');
+                document.getElementById('canvasContent').style.cursor = 'default';
+            }
+        }
+
+        function startAddingPin() {
+            if(!getCurrentPage().bgImage) return;
+            if(addMode) { setAddModeState(false); } 
+            else { setAddModeState(true); closePropertyPanel(); }
+        }
+
+        /* ----- 优化后的展示模式全流程快捷键方案 ----- */
+        document.addEventListener('keydown', (e) => {
+            const targetTag = e.target.tagName;
+            const isInputFocused = (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'SELECT');
+
+            // 全局/编辑模式快捷键
+            if (e.metaKey || e.ctrlKey) {
+                if (e.key === 'p' || e.key === 'P') { e.preventDefault(); toggleMode(); return; }
+                if (e.key === 's' || e.key === 'S') { e.preventDefault(); exportData(); return; }
+                if (e.key === 'n' || e.key === 'N') { e.preventDefault(); newProject(); return; }
+                if (e.key === 't' || e.key === 'T') { e.preventDefault(); showTableModal(); return; }
+                if ((e.key === 'c' || e.key === 'C') && e.shiftKey) { e.preventDefault(); openCompressModal(); return; }
+            }
+
+            if (addMode && e.key === 'Escape') { setAddModeState(false); return; }
+
+            // 状态判断
+            const isLightboxOpen = !document.getElementById('lightbox').classList.contains('hidden');
+            const isDetailOpen = !document.getElementById('playDetailModal').classList.contains('hidden');
+            const isTableOpen = !document.getElementById('tableModal').classList.contains('hidden');
+            const isCompressOpen = !document.getElementById('compressModal').classList.contains('hidden');
+
+            if (mode === 'play' && !isInputFocused) {
+                const key = e.key.toLowerCase(); // 统一转为小写便于判断 (比如F或f)
+
+                if (isLightboxOpen) {
+                    // 全屏灯箱模式下
+                    if (e.key === 'ArrowRight') { e.preventDefault(); nextLightboxImage(); }
+                    else if (e.key === 'ArrowLeft') { e.preventDefault(); prevLightboxImage(); }
+                    else if (e.key === 'Escape' || e.key === 'Enter' || key === 'f') { 
+                        e.preventDefault(); 
+                        closeLightbox(); 
+                    }
+                } 
+                else if (isDetailOpen) {
+                    // 详情面板模式下
+                    if (e.key === 'Escape') { e.preventDefault(); closePlayDetail(); }
+                    else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        justClosedLightbox = false; // 用户移动焦点，说明不想连贯退出
+                        if(currentDetailItem && currentDetailItem.images && currentDetailItem.images.length > 0) {
+                            playFocusedImageIndex = (playFocusedImageIndex + 1) % currentDetailItem.images.length;
+                            updateDetailThumbnailFocus();
+                        }
+                    }
+                    else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        justClosedLightbox = false; // 用户移动焦点，说明不想连贯退出
+                        if(currentDetailItem && currentDetailItem.images && currentDetailItem.images.length > 0) {
+                            playFocusedImageIndex = (playFocusedImageIndex - 1 + currentDetailItem.images.length) % currentDetailItem.images.length;
+                            updateDetailThumbnailFocus();
+                        }
+                    }
+                    else if (e.key === 'Enter' || key === 'f') {
+                        e.preventDefault();
+                        if (justClosedLightbox) {
+                            // 智能连贯退出逻辑：如果刚刚退出了全屏，再次按Enter/F则关闭详情面板
+                            justClosedLightbox = false;
+                            closePlayDetail();
+                        } else if(currentDetailItem && currentDetailItem.images && currentDetailItem.images.length > 0) {
+                            // 否则打开选中的图片进入全屏
+                            openLightbox(playFocusedImageIndex, currentDetailItem.id);
+                        } else {
+                            // 该点位没图片，说明按Enter/F只能是想退出详情面板
+                            closePlayDetail();
+                        }
+                    }
+                } 
+                else if (isTableOpen) {
+                    // 清单已打开：按 Esc, S 或 L 都可以关闭清单
+                    if (e.key === 'Escape' || key === 's' || key === 'l') { 
+                        e.preventDefault(); 
+                        closeTableModal(); 
+                    }
+                }
+                else if (isCompressOpen) {
+                    if (e.key === 'Escape') { e.preventDefault(); closeCompressModal(); }
+                }
+                else {
+                    // 主画布导航逻辑
+                    const page = getCurrentPage();
+                    if (e.key === 'Tab') {
+                        e.preventDefault(); // 阻止浏览器默认的系统焦点切换
+                        if (page.type === 'plan' && page.items && page.items.length > 0) {
+                            const items = page.items;
+                            let currentIndex = items.findIndex(i => i.id === playFocusedPinId);
+                            if (e.shiftKey) {
+                                currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+                            } else {
+                                currentIndex = (currentIndex + 1) % items.length;
+                            }
+                            playFocusedPinId = items[currentIndex].id;
+                            renderPins();
+                        }
+                    }
+                    else if (e.key === 'Enter' || key === 'f') {
+                        e.preventDefault();
+                        if (page.type === 'plan' && playFocusedPinId) {
+                            const item = page.items.find(i => i.id === playFocusedPinId);
+                            if (item) openPlayDetail(item);
+                        }
+                    }
+                    else if (e.key === 'Escape') {
+                        e.preventDefault(); toggleMode();
+                    }
+                    // 一键开关部件清单快捷键（S/L）
+                    else if (key === 's' || key === 'l') {
+                        e.preventDefault();
+                        if (page.type === 'plan' || page.type === 'backcover') {
+                            showTableModal();
+                        }
+                    }
+                    // 页面切换快捷键保持不变 (如果不需要冲突的话)
+                    else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+                        e.preventDefault();
+                        if (currentPageIndex < appData.pages.length - 1) switchPage(currentPageIndex + 1);
+                    }
+                    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                        e.preventDefault();
+                        if (currentPageIndex > 0) switchPage(currentPageIndex - 1);
+                    }
+                }
+            } 
+            // 在Edit模式下只提供弹窗退出
+            else {
+                if(isTableOpen && e.key === 'Escape') closeTableModal();
+                if(isCompressOpen && e.key === 'Escape') closeCompressModal();
+            }
+        });
+
+        function handleCanvasClick(event) {
+            if (addMode) {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const newItem = { id: generateId(), x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100, color: colorPalette[0], desc: '', images: [] };
+                getCurrentPage().items.push(newItem);
+                setAddModeState(false);
+                selectPin(newItem.id);
+            } else if (mode === 'edit' && event.target.id === 'pinsLayer') closePropertyPanel();
+        }
+
+        function selectPin(id) { selectedItemId = id; renderPins(); renderPropertyPanel(); }
+        function startDragPin(e, id) { if(mode !== 'edit' || addMode) return; isDragging = true; dragItem = getCurrentPage().items.find(i => i.id === id); selectPin(id); }
+        function dragPin(e) {
+            if (!isDragging || !dragItem) return;
+            const rect = document.getElementById('pinsLayer').getBoundingClientRect();
+            dragItem.x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)); dragItem.y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+            const pinEl = document.querySelector(`.pin[data-id="${dragItem.id}"]`); if(pinEl) { pinEl.style.left = `${dragItem.x}%`; pinEl.style.top = `${dragItem.y}%`; }
+        }
+        function stopDragPin() { isDragging = false; dragItem = null; }
+
+        function updateItemField(field, value) { const item = getCurrentPage().items.find(i => i.id === selectedItemId); if (item) { item[field] = value; if(field === 'color') {renderPins(); renderPropertyPanel();} } }
+        function uploadItemImages(event) { const files = event.target.files; if (!files.length) return; const item = getCurrentPage().items.find(i => i.id === selectedItemId); if(!item.images) item.images = []; Promise.all(Array.from(files).map(file => new Promise(resolve => { const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(file); }))).then(results => { item.images.push(...results); renderPropertyPanel(); }); }
+        function deleteItemImage(index) { const item = getCurrentPage().items.find(i => i.id === selectedItemId); if (item && item.images) { item.images.splice(index, 1); renderPropertyPanel(); } }
+        function duplicatePin() { const item = getCurrentPage().items.find(i => i.id === selectedItemId); if (item) { const newItem = JSON.parse(JSON.stringify(item)); newItem.id = generateId(); newItem.x += 3; newItem.y += 3; getCurrentPage().items.push(newItem); selectPin(newItem.id); } }
+        function deleteSelectedPin() { getCurrentPage().items = getCurrentPage().items.filter(i => i.id !== selectedItemId); closePropertyPanel(); }
+        
+        // 全局同步属性
+        function syncSimilarItems() {
+            const sourceItem = getCurrentPage().items.find(i => i.id === selectedItemId);
+            if (!sourceItem || !sourceItem.desc || !sourceItem.desc.trim()) return; 
+            
+            appData.pages.forEach(page => {
+                if(page.items) {
+                    page.items.forEach(target => {
+                        if (target.id !== sourceItem.id && target.desc === sourceItem.desc) { 
+                            target.color = sourceItem.color; 
+                            target.dimensions = sourceItem.dimensions; 
+                            target.material = sourceItem.material; 
+                            target.price = sourceItem.price; 
+                            target.brand = sourceItem.brand; 
+                            target.note = sourceItem.note; 
+                            target.images = sourceItem.images ? [...sourceItem.images] : []; 
+                        }
+                    });
+                }
+            });
+            renderPins();
+        }
+
+        function toggleMode() {
+            mode = mode === 'edit' ? 'play' : 'edit';
+            const topbar = document.getElementById('topbar'), sidebar = document.getElementById('sidebar'), playSidebar = document.getElementById('playSidebar'), toolbar = document.getElementById('canvasToolbar'), exitBtn = document.getElementById('exitPlayBtn'), titleInput = document.getElementById('pageTitleInput');
+            
+            if (mode === 'play') {
+                closePropertyPanel(); setAddModeState(false);
+                topbar.classList.add('hidden'); sidebar.classList.add('hidden'); toolbar.style.display = 'none'; exitBtn.classList.remove('hidden'); 
+                playSidebar.classList.remove('hidden'); titleInput.disabled = true;
+
+                // 请求浏览器全屏
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.warn(err)); }
+                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } // Safari
+                else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); } // IE11
+            } else {
+                topbar.classList.remove('hidden'); sidebar.classList.remove('hidden'); exitBtn.classList.add('hidden'); playSidebar.classList.add('hidden'); titleInput.disabled = false;
+                playFocusedPinId = null;
+
+                // 退出浏览器全屏
+                if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                    if (document.exitFullscreen) { document.exitFullscreen().catch(err => console.warn(err)); }
+                    else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+                    else if (document.msExitFullscreen) { document.msExitFullscreen(); }
+                }
+            }
+            renderCanvas();
+        }
+
+        function openPlayDetail(item) {
+            currentDetailItem = item;
+            playFocusedImageIndex = 0; // 重置选中第一张图
+            justClosedLightbox = false; // 重置连贯退出的标志
+            
+            const modal = document.getElementById('playDetailModal'), content = document.getElementById('playDetailContent'), t = i18n[currentLang];
+            let imagesHTML = '';
+            if (item.images && item.images.length > 0) { 
+                imagesHTML = `<div class="w-2/5 bg-gray-100 flex flex-col p-2"><div class="flex-1 overflow-y-auto hide-scroll grid grid-cols-1 gap-2" id="detailImageGallery">` +
+                    item.images.map((img, idx) => `<div id="thumb-${idx}" class="relative pt-[80%] cursor-zoom-in rounded overflow-hidden shadow-sm hover:shadow-md transition-all duration-200" onclick="openLightbox(${idx}, '${item.id}')"><img src="${img}" class="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"></div>`).join('') +
+                    `</div></div>`; 
+            }
+            content.innerHTML = `
+                ${imagesHTML}
+                <div class="${item.images && item.images.length > 0 ? 'w-3/5' : 'w-full'} p-10 flex flex-col relative bg-white">
+                    <div class="flex items-center gap-4 mb-8"><div class="w-6 h-6 rounded-full shadow-inner" style="background-color: ${item.color || '#000'}"></div><h2 class="text-3xl font-bold text-gray-900">${item.desc || '—'}</h2></div>
+                    <div class="grid grid-cols-2 gap-x-8 gap-y-6">
+                        <div><p class="text-xs text-gray-400 uppercase tracking-widest mb-1">${t.size}</p><p class="text-lg font-medium">${item.dimensions || '—'}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase tracking-widest mb-1">${t.mat}</p><p class="text-lg font-medium">${item.material || '—'}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase tracking-widest mb-1">${t.price}</p><p class="text-lg font-medium text-red-600">${item.price || '—'}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase tracking-widest mb-1">${t.brand}</p><p class="text-lg font-medium">${item.brand || '—'}</p></div>
+                        <div class="col-span-2"><p class="text-xs text-gray-400 uppercase tracking-widest mb-1">${t.note}</p><p class="text-md text-gray-600 bg-gray-50 p-4 rounded">${item.note ? item.note.replace(/\n/g, '<br>') : '—'}</p></div>
+                    </div>
+                    <button id="detailCloseBtn" onclick="closePlayDetail(event)" class="absolute top-6 right-6 text-gray-400 hover:text-gray-900 transition bg-gray-100 rounded-full p-2" title="Esc"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                </div>
+            `;
+            modal.classList.remove('hidden'); 
+            requestAnimationFrame(() => { 
+                modal.classList.remove('opacity-0'); 
+                content.classList.remove('scale-95'); 
+                if(item.images && item.images.length > 0) updateDetailThumbnailFocus(); // 初始化焦点
+            });
+        }
+
+        // 更新详情页中缩略图的高亮焦点
+        function updateDetailThumbnailFocus() {
+            const gallery = document.getElementById('detailImageGallery');
+            if(!gallery) return;
+            const thumbs = gallery.querySelectorAll('div[id^="thumb-"]');
+            thumbs.forEach((el, idx) => {
+                if (idx === playFocusedImageIndex) {
+                    el.classList.add('thumb-focus');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    el.classList.remove('thumb-focus');
+                }
+            });
+        }
+
+        function closePlayDetail(e) { 
+            if(e) e.stopPropagation(); 
+            const modal = document.getElementById('playDetailModal'), content = document.getElementById('playDetailContent'); 
+            modal.classList.add('opacity-0'); content.classList.add('scale-95'); 
+            setTimeout(() => { modal.classList.add('hidden'); currentDetailItem = null; }, 300); 
+        }
+
+        function openLightbox(index, itemId) { const item = getCurrentPage().items.find(i => i.id === itemId); if(!item || !item.images || item.images.length === 0) return; currentLightboxImages = item.images; currentLightboxIndex = index; updateLightboxView(); const lb = document.getElementById('lightbox'); lb.classList.remove('hidden'); requestAnimationFrame(() => lb.classList.remove('opacity-0')); }
+        function updateLightboxView() { const imgEl = document.getElementById('lightboxImg'), indEl = document.getElementById('lightboxIndicator'); imgEl.style.opacity = '0'; setTimeout(() => { imgEl.src = currentLightboxImages[currentLightboxIndex]; indEl.innerText = `${currentLightboxIndex + 1} / ${currentLightboxImages.length}`; imgEl.style.opacity = '1'; }, 150); }
+        function nextLightboxImage() { if(currentLightboxImages.length>1) { currentLightboxIndex = (currentLightboxIndex+1)%currentLightboxImages.length; updateLightboxView(); } }
+        function prevLightboxImage() { if(currentLightboxImages.length>1) { currentLightboxIndex = (currentLightboxIndex-1+currentLightboxImages.length)%currentLightboxImages.length; updateLightboxView(); } }
+        function closeLightbox() { 
+            const lb = document.getElementById('lightbox'); 
+            lb.classList.add('opacity-0'); 
+            setTimeout(() => { 
+                lb.classList.add('hidden'); 
+                currentLightboxImages = []; 
+            }, 300); 
+            // 重要：标记是从全屏退出的，为接下来一键退出详情面板做准备
+            justClosedLightbox = true; 
+        }
+
+        function showTableModal() {
+            const page = getCurrentPage(); 
+            let itemsToSummarize = [];
+            
+            if(page.type === 'backcover') {
+                document.getElementById('tableNameDisplay').innerText = i18n[currentLang].totalList;
+                appData.pages.forEach(p => {
+                    if(p.items) itemsToSummarize = itemsToSummarize.concat(p.items);
+                });
+            } else {
+                document.getElementById('tableNameDisplay').innerText = page.title || '';
+                itemsToSummarize = page.items || [];
+            }
+
+            const groups = {};
+            itemsToSummarize.forEach(item => {
+                const key = item.desc ? item.desc.trim() : item.id;
+                if(!groups[key]) groups[key] = { ...item, count: 1 }; else groups[key].count++;
+            });
+
+            const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
+            let totalOverallCount = 0, totalOverallPrice = 0;
+
+            Object.values(groups).forEach(g => {
+                const qty = g.count; totalOverallCount += qty;
+                let unitPrice = 0; if (g.price) { const numMatch = String(g.price).match(/[\d.]+/); if (numMatch) unitPrice = parseFloat(numMatch[0]); }
+                totalOverallPrice += (unitPrice * qty);
+
+                const thumb = (g.images && g.images.length > 0) ? `<img src="${g.images[0]}" class="w-10 h-10 object-cover rounded shadow-sm border border-gray-200 mx-auto">` : '-';
+                const tr = document.createElement('tr'); tr.className = "border-b border-gray-100 hover:bg-gray-50 transition";
+                tr.innerHTML = `
+                    <td class="py-4 px-2 text-center align-middle">${thumb}</td>
+                    <td class="py-4 px-2 text-center align-middle"><div class="w-4 h-4 rounded-full mx-auto shadow-inner" style="background-color: ${g.color || '#000'}"></div></td>
+                    <td class="py-4 px-2 text-center align-middle">${g.desc || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle">${g.dimensions || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle">${g.material || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle">${g.brand || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle text-red-600">${g.price || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle text-gray-500 text-xs">${g.note || '-'}</td>
+                    <td class="py-4 px-2 text-center align-middle font-bold text-base">${g.count}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('totalCountDisplay').innerText = totalOverallCount;
+            document.getElementById('totalPriceDisplay').innerText = totalOverallPrice > 0 ? (Math.round(totalOverallPrice * 100) / 100).toString() : '-';
+
+            const modal = document.getElementById('tableModal'), content = modal.querySelector('div');
+            modal.classList.remove('hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); });
+        }
+        
+        function closeTableModal(e) { if(e && e.target.closest('.bg-white') && e.target !== e.currentTarget) return; const modal = document.getElementById('tableModal'), content = modal.querySelector('div'); modal.classList.add('opacity-0'); content.classList.add('scale-95'); setTimeout(() => modal.classList.add('hidden'), 300); }
+
+        /* 图片压缩功能 */
+        function openCompressModal() {
+            const modal = document.getElementById('compressModal'), content = modal.querySelector('div');
+            modal.classList.remove('hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); });
+        }
+        function closeCompressModal(e) { 
+            if(e && e.target.closest('.bg-white') && e.target !== e.currentTarget) return; 
+            const modal = document.getElementById('compressModal'), content = modal.querySelector('div'); 
+            modal.classList.add('opacity-0'); content.classList.add('scale-95'); 
+            setTimeout(() => modal.classList.add('hidden'), 300); 
+        }
+
+        function compressBase64(base64, maxDim, quality) {
+            return new Promise((resolve) => {
+                if(!base64 || !base64.startsWith('data:image')) { resolve(base64); return; }
+                let img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    if(w > maxDim || h > maxDim) {
+                        if(w > h) { h = Math.round(h * (maxDim/w)); w = maxDim; }
+                        else { w = Math.round(w * (maxDim/h)); h = maxDim; }
+                        let cvs = document.createElement('canvas');
+                        cvs.width = w; cvs.height = h;
+                        let ctx = cvs.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(cvs.toDataURL('image/jpeg', quality));
+                    } else {
+                        resolve(base64); 
+                    }
+                };
+                img.onerror = () => resolve(base64);
+                img.src = base64;
+            });
+        }
+
+        async function executeCompression() {
+            const maxDim = parseInt(document.querySelector('input[name="compRes"]:checked').value);
+            const quality = 0.85;
+            const btn = document.getElementById('btnExecuteCompress');
+            const origText = btn.innerHTML;
+            
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+            btn.disabled = true;
+
+            let compressedCount = 0;
+            for (let p of appData.pages) {
+                if (p.bgImage) {
+                    const oldLen = p.bgImage.length;
+                    p.bgImage = await compressBase64(p.bgImage, maxDim, quality);
+                    if(p.bgImage.length < oldLen) compressedCount++;
+                }
+                if (p.items) {
+                    for (let i of p.items) {
+                        if (i.images) {
+                            for (let j = 0; j < i.images.length; j++) {
+                                const oldLen = i.images[j].length;
+                                i.images[j] = await compressBase64(i.images[j], maxDim, quality);
+                                if(i.images[j].length < oldLen) compressedCount++;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            closeCompressModal();
+            alert(`${i18n[currentLang].compressDone} ${compressedCount}`);
+            
+            if (selectedItemId) renderPropertyPanel();
+            renderCanvas();
+        }
+
+        function exportData() {
+            try {
+                const dataStr = JSON.stringify(appData), blob = new Blob([dataStr], { type: "application/json" }), url = URL.createObjectURL(blob), linkElement = document.createElement('a');
+                linkElement.href = url; linkElement.download = `Pieces_${appData.projectName || '项目'}_${new Date().toLocaleDateString().replace(/\//g, '')}.json`;
+                document.body.appendChild(linkElement); linkElement.click(); document.body.removeChild(linkElement); URL.revokeObjectURL(url);
+            } catch (error) { alert("导出失败，可能是因为插入的图片过大导致内存溢出。建议使用上方的“压缩”功能处理后再试。"); console.error(error); }
+        }
+
+        function importData(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if(parsedData && parsedData.pages) {
+                        appData = parsedData; currentPageIndex = 0; selectedItemId = null;
+                        
+                        // 兼容旧版本：补充封面
+                        if(appData.pages[0].type !== 'cover') {
+                            appData.pages.unshift({ id: generateId(), type: 'cover', title: '' });
+                        }
+                        // 兼容旧版本：补充封底
+                        if(appData.pages[appData.pages.length - 1].type !== 'backcover') {
+                            appData.pages.push({ id: generateId(), type: 'backcover', title: '' });
+                        }
+                        if(!appData.backcoverTitle) appData.backcoverTitle = 'THANKS';
+
+                        document.getElementById('coverProjectName').value = appData.projectName || ''; 
+                        document.getElementById('coverAuthor').value = appData.author || ''; 
+                        document.getElementById('coverDate').value = appData.date || '';
+                        
+                        renderSidebar(); renderCanvas(); closePropertyPanel();
+                    } else { alert("文件格式不正确！"); }
+                } catch(error) { alert("读取文件失败：" + error); }
+                event.target.value = '';
+            }
+            reader.readAsText(file);
+        }
+
+        function hexToRgba(hex, alpha) { let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); if (alpha) return `rgba(${r}, ${g}, ${b}, ${alpha})`; return `rgb(${r}, ${g}, ${b})`; }
+    </script>
+</body>
+</html>
