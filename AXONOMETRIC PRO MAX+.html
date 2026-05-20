@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>3D 轴测贪吃蛇 | 3D Isometric Snake</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            background-color: #0a0a0c; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 70vh; 
+            background-color: transparent; 
+            overflow: visible; 
+        }
+
+        #game-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; outline: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        
+        .ui-panel { 
+            pointer-events: auto; 
+            background: rgba(15, 15, 18, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            color: white;
+        }
+        
+        .btn-minimal { 
+            transition: all 0.2s ease;
+            border-radius: 6px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+        .btn-minimal:active { transform: scale(0.92); opacity: 0.7; }
+        .btn-line {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .btn-line:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .btn-dir {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            font-weight: 200;
+        }
+        .btn-dir.accent {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--theme-accent, #10b981);
+            color: var(--theme-accent, #10b981);
+            box-shadow: inset 0 0 10px var(--theme-accent-shadow, rgba(16,185,129,0.2));
+        }
+
+        #height-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column-reverse; 
+            gap: 6px;
+            pointer-events: none;
+            z-index: 5;
+            transition: left 0.1s ease-out; 
+        }
+        .floor-dot-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            height: 10px;
+            min-width: 10px;
+        }
+        .floor-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .dot-entity {
+            width: 6px; height: 6px; border-radius: 50%;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1.4); } }
+        @keyframes comboPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        
+        .combo-animate { animation: comboPulse 0.3s ease-out; }
+        
+        #combo-hud { transition: opacity 0.2s linear; }
+
+        ::-webkit-scrollbar { width: 0px; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            height: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px; width: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="dark transition-colors duration-500"> 
+
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <div id="height-indicator" class="hidden"></div>
+
+        <div id="ui-layer" class="flex items-center justify-center">
+            
+            <!-- 主菜单 -->
+            <div id="menu-main" class="ui-panel p-8 text-center w-80 max-w-[90%]">
+                <h1 class="text-2xl font-light mb-8 tracking-[0.2em] text-white" data-i18n="title">AXONOMETRIC</h1>
+                
+                <div class="mb-8 border-b border-white/10 pb-6">
+                    <div class="text-[10px] text-gray-400 font-light tracking-widest mb-2 uppercase" data-i18n="hud_score">最高记录 / Record</div>
+                    <div id="main-score-display" class="text-4xl font-mono font-light text-[var(--theme-accent,#FF003C)] tracking-wider">000</div>
+                </div>
+
+                <div class="space-y-4">
+                    <button onclick="startGame()" class="btn-minimal btn-line w-full py-3" data-i18n="btn_start"><i class="ph ph-play mr-2 text-lg"></i> 启动序列</button>
+                    <button onclick="showPanel('menu-saves')" class="btn-minimal btn-line w-full py-3" data-i18n="btn_saves"><i class="ph ph-floppy-disk mr-2 text-lg"></i> 空间存档</button>
+                    <button onclick="showPanel('menu-settings')" class="btn-minimal btn-line w-full py-3" data-i18n="btn_settings"><i class="ph ph-sliders-horizontal mr-2 text-lg"></i> 环境配置</button>
+                </div>
+                
+                <div class="mt-8 flex justify-center space-x-6 text-[10px] tracking-widest text-gray-500 pointer-events-auto">
+                    <button onclick="setLang('zh')" class="hover:text-white transition-colors">ZH</button>
+                    <button onclick="setLang('en')" class="hover:text-white transition-colors">EN</button>
+                    <button onclick="setLang('ja')" class="hover:text-white transition-colors">JA</button>
+                </div>
+                <div class="mt-4 text-[9px] tracking-widest text-gray-600">PRESS [SPACE] TO TOGGLE PLAY</div>
+            </div>
+
+            <!-- 设置菜单 -->
+            <div id="menu-settings" class="ui-panel hidden p-6 w-80 max-w-[90%]">
+                <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                    <h2 class="text-sm tracking-widest font-light text-white" data-i18n="settings_title">环境配置</h2>
+                    <button onclick="showPanel('menu-main')" class="btn-minimal p-1 text-gray-400 hover:text-white"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-light text-gray-400 mb-2 uppercase tracking-widest" data-i18n="set_color">光谱折射 (色轮排列)</label>
+                        <select id="sel-color" onchange="updateSettings()" class="w-full p-2 bg-transparent border border-white/20 rounded text-xs font-light text-white outline-none">
+                            <option value="0" class="bg-gray-900">霓虹红 (Neon Red)</option><option value="1" class="bg-gray-900">熔岩橘 (Lava Orange)</option><option value="2" class="bg-gray-900">电光黄 (Volt Yellow)</option><option value="3" class="bg-gray-900">荧光绿 (Neon Green)</option>
+                            <option value="4" class="bg-gray-900">青蓝冰 (Cyan Ice)</option><option value="5" class="bg-gray-900">亮电蓝 (Electric Blue)</option><option value="6" class="bg-gray-900">极光紫 (Aurora)</option><option value="7" class="bg-gray-900">镭射粉 (Laser Pink)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-light text-gray-400 mb-2 uppercase tracking-widest" data-i18n="set_audio">流体音效系统</label>
+                        <select id="sel-audio" onchange="updateSettings()" class="w-full p-2 bg-transparent border border-white/20 rounded text-xs font-light text-white outline-none">
+                            <option value="0" class="bg-gray-900">古典 (Classical)</option><option value="1" class="bg-gray-900">动漫 (Anime)</option><option value="2" class="bg-gray-900">心流 (Flow/Zen)</option><option value="3" class="bg-gray-900">摇滚 (Rock)</option>
+                            <option value="4" class="bg-gray-900">国风 (Guofeng)</option><option value="5" class="bg-gray-900">R&B</option><option value="6" class="bg-gray-900">爵士 (Jazz)</option><option value="7" class="bg-gray-900">Lo-Fi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-light text-gray-400 mb-2 uppercase tracking-widest" data-i18n="set_theme">真空背景象限</label>
+                        <select id="sel-theme" onchange="updateSettings()" class="w-full p-2 bg-transparent border border-white/20 rounded text-xs font-light text-white outline-none">
+                            <option value="0" class="bg-gray-900">极夜黑</option><option value="1" class="bg-gray-900">深海蓝</option><option value="2" class="bg-gray-900">星云紫</option><option value="3" class="bg-gray-900">幽林绿</option>
+                            <option value="4" class="bg-gray-900">灰烬黑</option><option value="5" class="bg-gray-900">猩红月</option><option value="6" class="bg-gray-900">深空青</option><option value="7" class="bg-gray-900">霓虹紫</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-light text-gray-400 mb-2 uppercase tracking-widest">
+                            <span data-i18n="set_speed">逻辑刷新率</span><span id="speed-val" class="text-white">3</span>
+                        </div>
+                        <input type="range" id="sel-speed" min="1" max="6" value="3" onchange="updateSettings()" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 存档菜单 -->
+            <div id="menu-saves" class="ui-panel hidden p-6 w-80 max-w-[90%] z-20">
+                <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                    <h2 class="text-sm tracking-widest font-light text-white" data-i18n="saves_title">矩阵记录区</h2>
+                    <button onclick="closeSavesMenu()" class="btn-minimal p-1 text-gray-400 hover:text-white"><i class="ph ph-play text-lg"></i></button>
+                </div>
+                <div id="save-slots-container" class="space-y-3 mb-6 max-h-[50vh] overflow-y-auto pr-1"></div>
+                <button onclick="showPanel('menu-main')" class="btn-minimal btn-line w-full py-2 text-xs tracking-widest" data-i18n="btn_tomenu">中断链接</button>
+            </div>
+
+            <!-- 游戏内 HUD -->
+            <div id="hud" class="hidden absolute inset-0 pointer-events-none">
+                
+                <!-- 左上角：分数、连击及紧贴的 LENGTH -->
+                <div class="absolute top-6 left-8 pointer-events-none flex flex-col items-start z-10">
+                    <div class="flex items-center space-x-3 pointer-events-auto">
+                        <div class="px-3 py-1 flex items-center space-x-2 border border-white/10 rounded-md bg-black/30 backdrop-blur-md">
+                            <i class="ph ph-hexagon text-gray-400 text-lg"></i>
+                            <span id="score-display" class="text-lg font-light text-white font-mono tracking-widest">000</span>
+                        </div>
+                        <div id="combo-hud" class="hidden px-3 py-1 flex items-center space-x-1 border border-[var(--theme-accent)] rounded-md bg-black/40 backdrop-blur-md shadow-[0_0_8px_var(--theme-accent-shadow)]">
+                            <i class="ph ph-fire text-[var(--theme-accent)] text-lg"></i>
+                            <span class="text-lg font-light text-white font-mono tracking-widest">x<span id="combo-display">2</span></span>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline space-x-2 px-1 mt-1 opacity-90">
+                        <span class="text-[9px] font-light text-gray-400 tracking-widest uppercase">Length</span>
+                        <span id="hud-length" class="text-xl font-light text-[var(--theme-accent)] font-mono tracking-widest">03</span>
+                    </div>
+                </div>
+
+                <!-- 右上角：暂停按钮 + 水平视角旋转按钮 -->
+                <div class="absolute top-6 right-8 pointer-events-none flex flex-col items-end space-y-2 z-10">
+                    <button onclick="pauseAndShowMenu()" class="pointer-events-auto btn-minimal btn-line h-10 px-3 flex items-center space-x-2 bg-black/30 backdrop-blur-md">
+                        <i class="ph ph-pause text-lg"></i>
+                        <span class="font-light text-[10px] tracking-widest uppercase mt-0.5 hidden sm:inline">Pause</span>
+                    </button>
+                    <!-- 视角调节区 -->
+                    <div class="pointer-events-auto flex space-x-2">
+                        <button onclick="rotateCam(-1)" class="btn-minimal btn-dir w-10 h-10 bg-black/30"><i class="ph ph-arrow-u-up-left text-lg"></i></button>
+                        <button onclick="rotateCam(1)" class="btn-minimal btn-dir w-10 h-10 bg-black/30"><i class="ph ph-arrow-u-up-right text-lg"></i></button>
+                    </div>
+                </div>
+
+                <!-- 优化 2：右下方集中控制中心：全部按键集合，宽度统一，高度压缩至28px (h-7) -->
+                <div class="absolute bottom-12 right-8 pointer-events-auto flex flex-col space-y-2 w-[88px]">
+                    <!-- 向上层 -->
+                    <button onclick="moveRelative('UP')" class="btn-minimal btn-dir accent w-full h-7 bg-black/30"><i class="ph ph-caret-up text-lg"></i></button>
+                    
+                    <!-- 平面四向 -->
+                    <div class="grid grid-cols-2 gap-2 w-full">
+                        <button onclick="moveRelative('TL')" class="btn-minimal btn-dir w-10 h-7 bg-black/30"><i class="ph ph-arrow-up-left text-lg"></i></button>
+                        <button onclick="moveRelative('TR')" class="btn-minimal btn-dir w-10 h-7 bg-black/30"><i class="ph ph-arrow-up-right text-lg"></i></button>
+                        <button onclick="moveRelative('BL')" class="btn-minimal btn-dir w-10 h-7 bg-black/30"><i class="ph ph-arrow-down-left text-lg"></i></button>
+                        <button onclick="moveRelative('BR')" class="btn-minimal btn-dir w-10 h-7 bg-black/30"><i class="ph ph-arrow-down-right text-lg"></i></button>
+                    </div>
+
+                    <!-- 向下层 -->
+                    <button onclick="moveRelative('DN')" class="btn-minimal btn-dir accent w-full h-7 bg-black/30"><i class="ph ph-caret-down text-lg"></i></button>
+                </div>
+                
+                <!-- 左下角制作者标识 -->
+                <div class="absolute bottom-4 left-6 text-[8px] font-mono tracking-[0.3em] font-light text-gray-600 pointer-events-none">
+                    PROGRAMMED BY RAYNEHU
+                </div>
+            </div>
+
+            <!-- Game Over -->
+            <div id="menu-gameover" class="ui-panel hidden p-8 text-center w-80 max-w-[90%] z-20">
+                <i class="ph ph-warning-circle text-4xl text-red-500/80 mb-6 block font-light"></i>
+                <h2 class="text-xl font-light mb-2 text-white tracking-widest" data-i18n="gameover_title">SESSION OVER</h2>
+                <p class="text-xs text-gray-400 mb-8 font-mono tracking-widest">SCORE: <span id="final-score" class="text-base text-[var(--theme-accent)]">0</span></p>
+                <div class="space-y-3">
+                    <button onclick="startGame()" class="btn-minimal btn-line w-full py-3 tracking-widest text-xs" data-i18n="btn_restart">重新部署</button>
+                    <button onclick="showPanel('menu-main')" class="btn-minimal btn-line w-full py-3 tracking-widest text-xs border-gray-700 text-gray-400 hover:text-white" data-i18n="btn_tomenu">返回枢纽</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+const i18n = {
+    zh: {
+        title: "AXONOMETRIC", btn_start: "启动序列", btn_saves: "空间存档", btn_settings: "环境配置",
+        settings_title: "环境配置", set_color: "光谱折射 (色轮排列)", set_audio: "流体音效系统", set_theme: "真空背景象限", set_speed: "逻辑刷新率",
+        saves_title: "矩阵记录区", slot_empty: "NULL", btn_save: "写入", btn_load: "读取",
+        gameover_title: "SESSION OVER", btn_restart: "重新部署", btn_tomenu: "中断链接", hud_score: "最高记录 / RECORD"
+    },
+    en: {
+        title: "AXONOMETRIC", btn_start: "INIT SEQUENCE", btn_saves: "DATA ARCHIVE", btn_settings: "PREFERENCES",
+        settings_title: "PREFERENCES", set_color: "SPECTRUM (WHEEL)", set_audio: "AUDIO ENGINE", set_theme: "VOID QUADRANT", set_speed: "LOGIC CLOCK",
+        saves_title: "DATA ARCHIVE", slot_empty: "NULL", btn_save: "WRITE", btn_load: "READ",
+        gameover_title: "SESSION OVER", btn_restart: "REDEPLOY", btn_tomenu: "DISCONNECT", hud_score: "HIGH SCORE / RECORD"
+    },
+    ja: {
+        title: "AXONOMETRIC", btn_start: "起動シークエンス", btn_saves: "空間アーカイブ", btn_settings: "環境設定",
+        settings_title: "環境設定", set_color: "スペクトル（色相環）", set_audio: "オーディオシステム", set_theme: "真空象限", set_speed: "クロックレート",
+        saves_title: "アーカイブ", slot_empty: "空", btn_save: "書込", btn_load: "読込",
+        gameover_title: "セッション終了", btn_restart: "再展開", btn_tomenu: "切断", hud_score: "最高記録 / RECORD"
+    }
+};
+
+const SKIN_COLORS = [
+    { hex: '#FF003C', val: 0xFF003C }, 
+    { hex: '#FF5500', val: 0xFF5500 }, 
+    { hex: '#FFCC00', val: 0xFFCC00 }, 
+    { hex: '#33FF00', val: 0x33FF00 }, 
+    { hex: '#00FFFF', val: 0x00FFFF }, 
+    { hex: '#0066FF', val: 0x0066FF }, 
+    { hex: '#9D00FF', val: 0x9D00FF }, 
+    { hex: '#FF00FF', val: 0xFF00FF }  
+];
+
+const FOOD_COLORS = ['#FFB7B2', '#B5EAD7', '#FFDAC1', '#C7CEEA', '#E2F0CB', '#FF9AA2', '#85E3FF', '#FDFD96'];
+
+const THEMES = [
+    { bg: '#080808', light: 0xffffff, grid: 0x333333, gridAlpha: 0.5, layerGlow: 0x1a1a1a }, 
+    { bg: '#051024', light: 0xffffff, grid: 0x1e3a8a, gridAlpha: 0.5, layerGlow: 0x0f172a }, 
+    { bg: '#170524', light: 0xe9d5ff, grid: 0x581c87, gridAlpha: 0.5, layerGlow: 0x2e1065 }, 
+    { bg: '#022012', light: 0xa7f3d0, grid: 0x065f46, gridAlpha: 0.5, layerGlow: 0x022c22 }, 
+    { bg: '#1c1917', light: 0xd6d3d1, grid: 0x57534e, gridAlpha: 0.4, layerGlow: 0x292524 }, 
+    { bg: '#2a0808', light: 0xfecaca, grid: 0x991b1b, gridAlpha: 0.5, layerGlow: 0x450a0a }, 
+    { bg: '#041f2e', light: 0xbae6fd, grid: 0x0369a1, gridAlpha: 0.5, layerGlow: 0x082f49 }, 
+    { bg: '#2e1065', light: 0xd8b4fe, grid: 0x7c3aed, gridAlpha: 0.4, layerGlow: 0x4c1d95 }  
+];
+
+let currentLang = 'zh';
+let gameState = {
+    colorIdx: 0, audioStyleIdx: 0, themeIdx: 0, speedLvl: 3, score: 0,
+    isPaused: false, isPlaying: false,
+    snake: [], dir: {x: 1, y: 0, z: 0}, nextDir: {x: 1, y: 0, z: 0},
+    food: null, nextFood: null,
+    stepsSinceFood: 0, combo: 1,
+    wasOnFoodLayer: false 
+};
+
+let audioCtx;
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTone(freq, type, duration, vol) {
+    if(!audioCtx || audioCtx.state !== 'running') return;
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+function playSFX(action) {
+    if(!audioCtx) return;
+    const style = gameState.audioStyleIdx || 0;
+    
+    const configs = [
+        { type: 'sine', baseEat: [523.25, 659.25], baseMove: 261.63, dur: 0.3 }, 
+        { type: 'square', baseEat: [880, 1760], baseMove: 440, dur: 0.12 },      
+        { type: 'sine', baseEat: [261.63, 392.00], baseMove: 130.81, dur: 0.6 }, 
+        { type: 'sawtooth', baseEat: [110, 164.81], baseMove: 55, dur: 0.15 },   
+        { type: 'triangle', baseEat: [392.00, 440.00], baseMove: 329.63, dur: 0.4 }, 
+        { type: 'sine', baseEat: [311.13, 392.00], baseMove: 155.56, dur: 0.35 },
+        { type: 'triangle', baseEat: [293.66, 415.30], baseMove: 146.83, dur: 0.25 }, 
+        { type: 'square', baseEat: [220, 246.94], baseMove: 110, dur: 0.5, vol: 0.04 } 
+    ];
+    
+    const cfg = configs[style];
+    const vol = cfg.vol || 0.08;
+    
+    if (action === 'move') {
+        playTone(cfg.baseMove, cfg.type, cfg.dur * 0.4, vol * 0.4);
+    } else if (action === 'eat') {
+        playTone(cfg.baseEat[0], cfg.type, cfg.dur, vol);
+        setTimeout(() => playTone(cfg.baseEat[1], cfg.type, cfg.dur, vol), 50);
+    } else if (action === 'combo') {
+        let m = Math.min(gameState.combo, 10);
+        let pitchShift = 1 + (m * 0.06); 
+        playTone(cfg.baseEat[0] * pitchShift, cfg.type, cfg.dur * 1.5, vol * 1.2);
+        setTimeout(() => playTone(cfg.baseEat[1] * pitchShift, cfg.type, cfg.dur * 1.5, vol * 1.2), 50);
+    } else if (action === 'die') {
+        playTone(cfg.baseMove * 0.8, 'sawtooth', 0.5, vol);
+        setTimeout(() => playTone(cfg.baseMove * 0.6, 'sawtooth', 0.8, vol), 150);
+    } else if (action === 'layer_match') {
+        playTone(cfg.baseEat[0] * 1.5, 'sine', 0.1, vol * 0.6);
+        setTimeout(() => playTone(cfg.baseEat[0] * 2, 'sine', 0.2, vol * 0.4), 80);
+    }
+}
+
+const GRID_SIZE = 8; 
+let lastMoveTime = 0;
+let animationFrameId;
+let activeRipples = []; 
+
+let scene, camera, renderer;
+let snakeMeshes = [];
+let linkMeshes = []; 
+let foodMesh, ghostFoodMesh, gridGroup, layerHighlightMesh;
+let towerGroup, towerContainer; 
+let lights = [];
+
+let snakeMat, linkMat, layerHighlightMat;
+
+let camAzimuthIdx = 0; 
+let camPolar = 1;      
+let targetCamPos = new THREE.Vector3();
+// 优化 1：渲染视锥体放大至 20.5，视觉上实现 BOX 再次整体缩小 10%
+const frustumSize = 20.5; 
+
+// ----------------------------------------------------
+// UI 与本地存储
+// ----------------------------------------------------
+function setLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang][key]) el.innerHTML = i18n[lang][key];
+    });
+    renderSavesMenu();
+}
+
+function showPanel(panelId) {
+    document.querySelectorAll('.ui-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('height-indicator').classList.add('hidden');
+    
+    if (panelId) document.getElementById(panelId).classList.remove('hidden');
+    if (panelId === 'menu-saves') renderSavesMenu();
+    if (panelId === 'hud') {
+        document.getElementById('height-indicator').classList.remove('hidden');
+    }
+}
+
+function pauseAndShowMenu() {
+    if (gameState.isPlaying && !gameState.isPaused) {
+        gameState.isPaused = true;
+    }
+    showPanel('menu-saves');
+}
+
+function closeSavesMenu() {
+    if(gameState.isPlaying) {
+        gameState.isPaused = false;
+        lastMoveTime = performance.now();
+        showPanel('hud');
+    } else {
+        showPanel('menu-main');
+    }
+}
+
+function updateSettings() {
+    gameState.colorIdx = parseInt(document.getElementById('sel-color').value);
+    gameState.audioStyleIdx = parseInt(document.getElementById('sel-audio').value);
+    gameState.themeIdx = parseInt(document.getElementById('sel-theme').value);
+    gameState.speedLvl = parseInt(document.getElementById('sel-speed').value);
+    document.getElementById('speed-val').innerText = gameState.speedLvl;
+    if (scene) {
+        applyTheme(gameState.themeIdx);
+        updateMaterials();
+        rebuildSceneFromState();
+        rebuildTower();
+        updateHeightIndicators();
+    }
+}
+
+function renderSavesMenu() {
+    const container = document.getElementById('save-slots-container');
+    container.innerHTML = '';
+    for (let i = 1; i <= 6; i++) {
+        const dataStr = localStorage.getItem(`snake3d_save_${i}`);
+        let infoText = i18n[currentLang].slot_empty;
+        if (dataStr) {
+            try {
+                const data = JSON.parse(dataStr);
+                const d = new Date(data.timestamp);
+                const dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                infoText = `${dateStr} | S:${data.state.score}`;
+            } catch(e) {}
+        }
+        container.innerHTML += `
+            <div class="p-3 bg-white/5 border border-white/10 rounded flex justify-between items-center">
+                <div class="text-left text-[10px] text-gray-400 font-mono tracking-widest">
+                    <span class="font-light text-white block mb-1">SLOT 0${i}</span>
+                    ${infoText}
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="saveGameSlot(${i})" class="btn-minimal btn-line w-7 h-7"><i class="ph ph-download-simple"></i></button>
+                    ${dataStr ? `<button onclick="loadGameSlot(${i})" class="btn-minimal btn-line w-7 h-7 text-white"><i class="ph ph-play"></i></button>` : ''}
+                </div>
+            </div>`;
+    }
+}
+function saveGameSlot(s) { if(gameState.isPlaying) localStorage.setItem(`snake3d_save_${s}`, JSON.stringify({timestamp: Date.now(), state: gameState})); renderSavesMenu(); }
+function loadGameSlot(s) {
+    const d = localStorage.getItem(`snake3d_save_${s}`);
+    if (d) {
+        Object.assign(gameState, JSON.parse(d).state);
+        gameState.isPaused = false; 
+        updateScoreUI();
+        updateComboFadeUI();
+        updateMaterials();
+        rebuildSceneFromState();
+        rebuildTower();
+        updateHeightIndicators();
+        updateLayerHighlight();
+        lastMoveTime = performance.now();
+        showPanel('hud');
+        if(!animationFrameId) requestAnimationFrame(gameLoop);
+    }
+}
+
+function initHeightIndicator() {
+    const container = document.getElementById('height-indicator');
+    container.innerHTML = '';
+    for(let i=0; i<GRID_SIZE; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'floor-dot-container';
+        wrap.id = `floor-wrap-${i}`;
+        const defaultDot = document.createElement('div');
+        defaultDot.className = 'floor-dot';
+        wrap.appendChild(defaultDot);
+        container.appendChild(wrap);
+    }
+}
+
+// ----------------------------------------------------
+// Three.js 渲染与材质
+// ----------------------------------------------------
+function initThree() {
+    const container = document.getElementById('game-container');
+    const canvas = document.getElementById('game-canvas');
+    scene = new THREE.Scene();
+    
+    const aspect = container.clientWidth / container.clientHeight;
+    camera = new THREE.OrthographicCamera(
+        frustumSize * aspect / - 2, frustumSize * aspect / 2, 
+        frustumSize / 2, frustumSize / - 2, -100, 1000 
+    );
+    
+    towerGroup = new THREE.Group();
+    towerContainer = new THREE.Group();
+    towerGroup.add(towerContainer);
+    scene.add(towerGroup);
+
+    updateCameraTargetPos();
+    camera.position.copy(targetCamPos);
+    camera.lookAt(0, 0, 0);
+    
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    window.addEventListener('resize', onWindowResize, false);
+    
+    initHeightIndicator();
+    updateMaterials();
+    applyTheme(gameState.themeIdx);
+}
+
+function onWindowResize() {
+    const container = document.getElementById('game-container');
+    const aspect = container.clientWidth / container.clientHeight;
+    camera.left = -frustumSize * aspect / 2;
+    camera.right = frustumSize * aspect / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = -frustumSize / 2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function updateMaterials() {
+    const skin = SKIN_COLORS[gameState.colorIdx];
+    snakeMat = new THREE.MeshStandardMaterial({ color: skin.val, roughness: 0.15, metalness: 0.1 });
+    linkMat = new THREE.MeshStandardMaterial({ color: skin.val, roughness: 0.5 });
+    
+    document.documentElement.style.setProperty('--theme-accent', skin.hex);
+    document.documentElement.style.setProperty('--theme-accent-shadow', `${skin.hex}66`); 
+}
+
+function getSegmentMaterial(index, totalLength) {
+    let mat = snakeMat.clone();
+    if (totalLength > 1) {
+        let ratio = index / (totalLength - 1); 
+        if (ratio > 0) {
+            mat.transparent = true;
+            mat.opacity = 1.0 - (0.7 * ratio); 
+        }
+    }
+    return mat;
+}
+
+function buildLayerLinesGeometry(size) {
+    const vertices = [];
+    const hs = size / 2;
+    for (let y = -hs; y <= hs; y += 1) {
+        vertices.push(-hs, y, hs, hs, y, hs, hs, y, hs, hs, y, -hs);   
+        vertices.push(hs, y, -hs, -hs, y, -hs, -hs, y, -hs, -hs, y, hs); 
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    return geo;
+}
+
+function applyTheme(idx) {
+    const theme = THEMES[idx];
+    document.body.style.backgroundColor = theme.bg;
+    
+    lights.forEach(l => scene.remove(l));
+    lights = [];
+    if(gridGroup) scene.remove(gridGroup);
+    if(layerHighlightMesh) scene.remove(layerHighlightMesh);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    const dirLight = new THREE.DirectionalLight(theme.light, 0.5);
+    dirLight.position.set(10, 20, 10);
+    scene.add(ambientLight, dirLight);
+    lights.push(ambientLight, dirLight);
+
+    gridGroup = new THREE.Group();
+    const gridGeo = buildLayerLinesGeometry(GRID_SIZE);
+    const gridMat = new THREE.LineBasicMaterial({ color: theme.grid, transparent: true, opacity: theme.gridAlpha });
+    gridGroup.add(new THREE.LineSegments(gridGeo, gridMat));
+    scene.add(gridGroup);
+
+    const layerGeo = new THREE.BoxGeometry(GRID_SIZE, 1, GRID_SIZE);
+    layerHighlightMat = new THREE.MeshBasicMaterial({ 
+        color: theme.layerGlow, 
+        transparent: true, 
+        opacity: 0.4, 
+        depthWrite: false, 
+        blending: THREE.AdditiveBlending 
+    });
+    layerHighlightMesh = new THREE.Mesh(layerGeo, layerHighlightMat);
+    layerHighlightMesh.visible = false;
+    scene.add(layerHighlightMesh);
+}
+
+function getWorldPos(logicPos) { return logicPos - (GRID_SIZE / 2) + 0.5; }
+function getWorldVec(cell) { return new THREE.Vector3(getWorldPos(cell.x), getWorldPos(cell.y), getWorldPos(cell.z)); }
+function getSegmentGeometry(w, h, d) {
+    if (THREE.RoundedBoxGeometry) return new THREE.RoundedBoxGeometry(w, h, d, 4, 0.1);
+    return new THREE.BoxGeometry(w, h, d);
+}
+
+function createHeadGroup(scale, mat) {
+    const headGroup = new THREE.Group();
+    const jawGeo = getSegmentGeometry(0.7 * scale, 0.35 * scale, 0.7 * scale);
+    
+    const topJaw = new THREE.Mesh(jawGeo, mat);
+    topJaw.position.set(0, 0.18 * scale, 0);
+    topJaw.rotation.x = -0.25; 
+    
+    const bottomJaw = new THREE.Mesh(jawGeo, mat);
+    bottomJaw.position.set(0, -0.18 * scale, 0);
+    bottomJaw.rotation.x = 0.25; 
+    
+    const eyeGeo = new THREE.SphereGeometry(0.06 * scale, 8, 8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+    const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+    
+    eye1.position.set(0.32 * scale, 0.1 * scale, 0.2 * scale); 
+    eye2.position.set(-0.32 * scale, 0.1 * scale, 0.2 * scale);
+    topJaw.add(eye1, eye2);
+    
+    headGroup.add(topJaw, bottomJaw);
+    return headGroup;
+}
+
+function createSnakeSegment(index, totalLength) {
+    const mat = getSegmentMaterial(index, totalLength);
+    if (index === 0) return createHeadGroup(1, mat);
+    const geo = getSegmentGeometry(0.7, 0.7, 0.7);
+    return new THREE.Mesh(geo, mat);
+}
+
+function createMiniSnakeSegment(index, totalLength) {
+    const mat = getSegmentMaterial(index, totalLength);
+    if (index === 0) return createHeadGroup(0.5, mat); 
+    const geo = getSegmentGeometry(0.35, 0.35, 0.35);
+    return new THREE.Mesh(geo, mat);
+}
+
+function createFood(foodObj, isGhost = false) {
+    const colorHex = foodObj ? foodObj.color : '#FFFFFF';
+    let mat;
+    if (isGhost) {
+        mat = new THREE.MeshBasicMaterial({ color: colorHex, wireframe: true, transparent: true, opacity: 0.35 });
+    } else {
+        mat = new THREE.MeshStandardMaterial({ 
+            color: colorHex, roughness: 0.2, metalness: 0.2,
+            emissive: colorHex, emissiveIntensity: 0.1 
+        });
+    }
+    const geo = new THREE.OctahedronGeometry(0.35, 0);
+    const mesh = new THREE.Mesh(geo, mat);
+    
+    if(!isGhost) {
+        const coreGeo = new THREE.OctahedronGeometry(0.15, 0);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        mesh.add(core);
+    }
+    return mesh;
+}
+
+function rebuildTower() {
+    while(towerContainer.children.length > 0) towerContainer.remove(towerContainer.children[0]);
+    
+    const len = gameState.snake.length;
+    document.getElementById('hud-length').innerText = String(len).padStart(2, '0');
+    
+    const miniLinkGeo = new THREE.BoxGeometry(0.08, 0.08, 1);
+    let towerPositions = [];
+    
+    for(let i=0; i<len; i++) {
+        let spiralIndex = len - 1 - i; 
+        let angle = spiralIndex * Math.PI / 3; 
+        let r = 0.6;
+        let yOffset = spiralIndex * 0.166; 
+        
+        let pos = new THREE.Vector3(Math.cos(angle)*r, yOffset, Math.sin(angle)*r);
+        towerPositions.push(pos);
+        
+        let mesh = createMiniSnakeSegment(i, len);
+        mesh.position.copy(pos);
+        
+        if (i === 0) {
+            let nextAngle = angle + 0.1;
+            let targetPos = new THREE.Vector3(Math.cos(nextAngle)*r, yOffset, Math.sin(nextAngle)*r);
+            mesh.lookAt(targetPos);
+        }
+        towerContainer.add(mesh);
+    }
+    
+    for(let i=0; i<len - 1; i++) {
+        let p1 = towerPositions[i];
+        let p2 = towerPositions[i+1];
+        let dist = p1.distanceTo(p2);
+        
+        let lMat = linkMat.clone();
+        lMat.transparent = true;
+        let ratio = i / Math.max(1, len - 2);
+        lMat.opacity = 0.5 - (0.4 * ratio); 
+        
+        let link = new THREE.Mesh(miniLinkGeo, lMat);
+        link.position.copy(p1).add(p2).multiplyScalar(0.5);
+        link.lookAt(p2);
+        link.scale.z = dist * 0.8; 
+        towerContainer.add(link);
+    }
+}
+
+function rebuildSceneFromState() {
+    snakeMeshes.forEach(m => scene.remove(m));
+    linkMeshes.forEach(m => scene.remove(m));
+    snakeMeshes = []; linkMeshes = [];
+    if(foodMesh) scene.remove(foodMesh);
+    if(ghostFoodMesh) scene.remove(ghostFoodMesh);
+
+    const len = gameState.snake.length;
+    gameState.snake.forEach((seg, index) => {
+        const mesh = createSnakeSegment(index, len);
+        mesh.position.copy(getWorldVec(seg));
+        if (index === 0) {
+            let target = mesh.position.clone().add(new THREE.Vector3(gameState.dir.x, gameState.dir.y, gameState.dir.z));
+            mesh.lookAt(target);
+        }
+        scene.add(mesh);
+        snakeMeshes.push(mesh);
+    });
+
+    const linkGeo = new THREE.BoxGeometry(0.15, 0.15, 1);
+    for (let i = 0; i < len - 1; i++) {
+        let p1 = gameState.snake[i];
+        let p2 = gameState.snake[i+1];
+        let dist = Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y) + Math.abs(p1.z - p2.z);
+        if (dist === 1) { 
+            let w1 = getWorldVec(p1);
+            let w2 = getWorldVec(p2);
+            
+            let lMat = linkMat.clone();
+            lMat.transparent = true;
+            let ratio = i / Math.max(1, len - 2);
+            lMat.opacity = 0.6 - (0.5 * ratio); 
+            
+            let link = new THREE.Mesh(linkGeo, lMat);
+            link.position.copy(w1).add(w2).multiplyScalar(0.5);
+            link.lookAt(w2);
+            link.scale.z = 0.6;
+            scene.add(link);
+            linkMeshes.push(link);
+        }
+    }
+
+    if(gameState.food) {
+        foodMesh = createFood(gameState.food, false);
+        foodMesh.position.copy(getWorldVec(gameState.food));
+        scene.add(foodMesh);
+    }
+    
+    if(gameState.nextFood) {
+        ghostFoodMesh = createFood(gameState.nextFood, true);
+        ghostFoodMesh.position.copy(getWorldVec(gameState.nextFood));
+        scene.add(ghostFoodMesh);
+    }
+}
+
+function updateLayerHighlight() {
+    if (gameState.snake.length > 0 && layerHighlightMesh) {
+        const headY = gameState.snake[0].y;
+        layerHighlightMesh.position.y = getWorldPos(headY);
+        layerHighlightMesh.visible = true;
+    }
+}
+
+// ----------------------------------------------------
+// 相机与动态定位引擎
+// ----------------------------------------------------
+function updateCameraTargetPos() {
+    const radius = 25; 
+    const angle = (camAzimuthIdx * Math.PI / 2) + (Math.PI / 4);
+    
+    const y = camPolar * radius * Math.sin(Math.PI / 4); 
+    const x = radius * Math.cos(Math.PI / 4) * Math.cos(angle);
+    const z = radius * Math.cos(Math.PI / 4) * Math.sin(angle);
+    targetCamPos.set(x, y, z);
+}
+
+function updateResponsiveTower() {
+    if (!towerGroup) return;
+    const isPortrait = window.innerWidth < window.innerHeight;
+    
+    if (isPortrait) {
+        towerGroup.visible = false;
+    } else {
+        towerGroup.visible = true;
+        towerGroup.quaternion.identity(); 
+        
+        let camDirFlat = camera.position.clone().normalize();
+        let upFlat = new THREE.Vector3(0,1,0);
+        let camLeftFlat = new THREE.Vector3().crossVectors(upFlat, camDirFlat).normalize();
+        
+        // 由于 Frustum 增大，左侧白塔也需向左微调保证距离
+        towerGroup.position.set(0,0,0)
+            .add(camLeftFlat.multiplyScalar(10.0))
+            .add(new THREE.Vector3(0,1,0).multiplyScalar(-0.5));
+    }
+}
+
+function updateHeightIndicatorPosition() {
+    const indicator = document.getElementById('height-indicator');
+    if(!indicator || !gameState.isPlaying) return;
+
+    let maxScreenX = -Infinity;
+    const hs = GRID_SIZE / 2;
+    const pts = [
+        new THREE.Vector3(hs, hs, hs), new THREE.Vector3(hs, hs, -hs),
+        new THREE.Vector3(-hs, hs, hs), new THREE.Vector3(-hs, hs, -hs),
+        new THREE.Vector3(hs, -hs, hs), new THREE.Vector3(hs, -hs, -hs),
+        new THREE.Vector3(-hs, -hs, hs), new THREE.Vector3(-hs, -hs, -hs)
+    ];
+
+    pts.forEach(p => {
+        let pClone = p.clone();
+        pClone.project(camera);
+        if (pClone.x > maxScreenX) maxScreenX = pClone.x;
+    });
+
+    const pixelX = (maxScreenX + 1) / 2 * window.innerWidth;
+    indicator.style.left = `${pixelX + 16}px`; 
+}
+
+function rotateCam(dir) { 
+    camAzimuthIdx = (camAzimuthIdx + dir + 4) % 4;
+    updateCameraTargetPos();
+}
+
+// ----------------------------------------------------
+// 智能输入系统
+// ----------------------------------------------------
+function setDir(dx, dy, dz) {
+    if (!gameState.isPlaying || gameState.isPaused) return;
+    initAudio(); 
+    if (gameState.dir.x === -dx && dx !== 0) return;
+    if (gameState.dir.y === -dy && dy !== 0) return;
+    if (gameState.dir.z === -dz && dz !== 0) return;
+    gameState.nextDir = {x: dx, y: dy, z: dz};
+}
+
+function moveRelative(screenDir) {
+    if (screenDir === 'UP') { setDir(0, 1, 0); return; }
+    if (screenDir === 'DN') { setDir(0, -1, 0); return; }
+
+    let targetVec2D;
+    if(screenDir === 'TR') targetVec2D = {x: 1, y: 1};   
+    if(screenDir === 'TL') targetVec2D = {x: -1, y: 1};  
+    if(screenDir === 'BR') targetVec2D = {x: 1, y: -1};  
+    if(screenDir === 'BL') targetVec2D = {x: -1, y: -1}; 
+    
+    const len = Math.sqrt(targetVec2D.x*targetVec2D.x + targetVec2D.y*targetVec2D.y);
+    targetVec2D.x /= len; targetVec2D.y /= len;
+
+    const worldAxes = [ {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:0,y:0,z:1}, {x:0,y:0,z:-1} ];
+    let bestAxis = null;
+    let maxDot = -Infinity;
+    let p0 = new THREE.Vector3(0,0,0).project(camera); 
+
+    worldAxes.forEach(axis => {
+        let p1 = new THREE.Vector3(axis.x, axis.y, axis.z).project(camera);
+        let dx = p1.x - p0.x;
+        let dy = p1.y - p0.y; 
+        
+        let l = Math.sqrt(dx*dx + dy*dy);
+        if(l > 0.001) {
+            dx /= l; dy /= l;
+            let dot = dx * targetVec2D.x + dy * targetVec2D.y;
+            if(dot > maxDot) { maxDot = dot; bestAxis = axis; }
+        }
+    });
+
+    if(bestAxis) setDir(bestAxis.x, bestAxis.y, bestAxis.z);
+}
+
+window.addEventListener('keydown', (e) => {
+    initAudio(); 
+    if (e.code === 'Space') {
+        e.preventDefault(); 
+        if (gameState.isPlaying) {
+            if (gameState.isPaused) closeSavesMenu();
+            else pauseAndShowMenu();
+        } else {
+            startGame();
+        }
+        return;
+    }
+
+    switch (e.key.toLowerCase()) {
+        case 'w': case 'arrowup': moveRelative('TL'); break;     
+        case 'd': case 'arrowright': moveRelative('TR'); break;  
+        case 's': case 'arrowdown': moveRelative('BR'); break;   
+        case 'a': case 'arrowleft': moveRelative('BL'); break;   
+        case 'e': moveRelative('UP'); break;           
+        case 'q': case 'shift': moveRelative('DN'); break;       
+    }
+});
+
+// ----------------------------------------------------
+// 游戏主逻辑
+// ----------------------------------------------------
+function updateHeightIndicators() {
+    if (!gameState.isPlaying && gameState.snake.length === 0) return;
+    
+    const headY = gameState.snake[0].y;
+    const foodY = gameState.food ? gameState.food.y : -1;
+    const nextFoodY = gameState.nextFood ? gameState.nextFood.y : -1;
+    const snakeHex = SKIN_COLORS[gameState.colorIdx].hex;
+    
+    for(let i=0; i<GRID_SIZE; i++) {
+        const wrap = document.getElementById(`floor-wrap-${i}`);
+        if(!wrap) continue;
+        wrap.innerHTML = ''; 
+        
+        let entities = [];
+        if (headY === i) entities.push({ type: 'head', color: snakeHex });
+        if (foodY === i) entities.push({ type: 'food', color: gameState.food.color });
+        if (nextFoodY === i && nextFoodY !== foodY) entities.push({ type: 'nextFood', color: gameState.nextFood.color });
+
+        if (entities.length === 0) {
+            let dot = document.createElement('div');
+            dot.className = 'floor-dot';
+            wrap.appendChild(dot);
+        } else {
+            entities.forEach(e => {
+                let dot = document.createElement('div');
+                dot.className = 'dot-entity';
+                dot.style.boxShadow = `0 0 8px ${e.color}`;
+                if (e.type === 'nextFood') {
+                    dot.style.border = `1px solid ${e.color}`;
+                    dot.style.background = 'transparent';
+                } else {
+                    dot.style.background = e.color;
+                }
+                wrap.appendChild(dot);
+            });
+        }
+    }
+}
+
+function getRandomFoodColor() {
+    let snakeHex = SKIN_COLORS[gameState.colorIdx].hex;
+    let availableColors = FOOD_COLORS.filter(c => c !== snakeHex);
+    if (gameState.food) availableColors = availableColors.filter(c => c !== gameState.food.color);
+    return availableColors[Math.floor(Math.random() * availableColors.length)];
+}
+
+function getFreePos(excludeArr) {
+    let occupied = new Set();
+    for (let seg of excludeArr) {
+        if (seg) occupied.add(`${seg.x},${seg.y},${seg.z}`);
+    }
+    
+    let freeCells = [];
+    for (let x = 0; x < GRID_SIZE; x++) {
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let z = 0; z < GRID_SIZE; z++) {
+                if (!occupied.has(`${x},${y},${z}`)) {
+                    freeCells.push({x, y, z});
+                }
+            }
+        }
+    }
+    if (freeCells.length === 0) return {x: 0, y: 0, z: 0}; 
+    
+    let pickIndex = Math.floor(Math.random() * freeCells.length);
+    return freeCells[pickIndex];
+}
+
+function spawnFood() {
+    if (!gameState.nextFood) {
+        let pos = getFreePos(gameState.snake);
+        pos.color = getRandomFoodColor();
+        gameState.nextFood = pos;
+    }
+    gameState.food = gameState.nextFood;
+    
+    let nPos = getFreePos([...gameState.snake, gameState.food]);
+    nPos.color = getRandomFoodColor();
+    gameState.nextFood = nPos;
+    
+    updateHeightIndicators(); 
+}
+
+function updateScoreUI() {
+    document.getElementById('score-display').innerText = String(gameState.score).padStart(3, '0');
+    document.getElementById('main-score-display').innerText = String(gameState.score).padStart(3, '0');
+    
+    const comboHud = document.getElementById('combo-hud');
+    const comboText = document.getElementById('combo-display');
+    
+    if (gameState.combo > 1) {
+        comboHud.classList.remove('hidden');
+        comboText.innerText = gameState.combo;
+        comboHud.style.opacity = '1'; 
+        comboHud.classList.remove('combo-animate');
+        void comboHud.offsetWidth; 
+        comboHud.classList.add('combo-animate');
+    } else {
+        comboHud.classList.add('hidden');
+    }
+}
+
+function updateComboFadeUI() {
+    const comboHud = document.getElementById('combo-hud');
+    if (gameState.combo > 1) {
+        if (gameState.stepsSinceFood <= 18) {
+            let opacity = 1.0 - (gameState.stepsSinceFood / 18);
+            comboHud.style.opacity = Math.max(0.15, opacity).toString();
+        } else {
+            gameState.combo = 1; 
+            comboHud.classList.add('hidden');
+        }
+    }
+}
+
+function startGame() {
+    initAudio();
+    updateSettings();
+    showPanel('hud');
+    
+    gameState.score = 0; gameState.isPaused = false; gameState.isPlaying = true;
+    gameState.stepsSinceFood = 0; gameState.combo = 1;
+    gameState.nextFood = null; 
+    activeRipples = [];
+    updateScoreUI();
+
+    gameState.snake = [{x: 4,y: 4,z: 4}, {x: 3,y: 4,z: 4}, {x: 2,y: 4,z: 4}];
+    gameState.dir = {x: 1, y: 0, z: 0}; gameState.nextDir = {x: 1, y: 0, z: 0};
+
+    spawnFood();
+    gameState.wasOnFoodLayer = (gameState.snake[0].y === gameState.food.y);
+    
+    rebuildSceneFromState();
+    rebuildTower(); 
+    updateLayerHighlight();
+    updateHeightIndicators(); 
+
+    lastMoveTime = performance.now();
+    if(!animationFrameId) requestAnimationFrame(gameLoop);
+}
+
+function stepGame() {
+    gameState.dir = {...gameState.nextDir};
+    const head = gameState.snake[0];
+    
+    playSFX('move');
+    
+    let nx = (head.x + gameState.dir.x + GRID_SIZE) % GRID_SIZE;
+    let ny = (head.y + gameState.dir.y + GRID_SIZE) % GRID_SIZE;
+    let nz = (head.z + gameState.dir.z + GRID_SIZE) % GRID_SIZE;
+
+    for (let i = 0; i < gameState.snake.length; i++) {
+        if (gameState.snake[i].x === nx && gameState.snake[i].y === ny && gameState.snake[i].z === nz) {
+            gameState.isPlaying = false;
+            playSFX('die');
+            document.getElementById('final-score').innerText = String(gameState.score).padStart(3, '0');
+            showPanel('menu-gameover');
+            return;
+        }
+    }
+
+    gameState.snake.unshift({x: nx, y: ny, z: nz});
+    gameState.stepsSinceFood++;
+    
+    let ate = false;
+    if (nx === gameState.food.x && ny === gameState.food.y && nz === gameState.food.z) {
+        ate = true;
+        if (gameState.stepsSinceFood <= 18) {
+            gameState.combo = Math.min(10, gameState.combo + 1);
+            playSFX('combo');
+        } else {
+            gameState.combo = 1;
+            playSFX('eat');
+        }
+        
+        gameState.score += 10 * gameState.combo;
+        gameState.stepsSinceFood = 0;
+        
+        updateScoreUI();
+        spawnFood();
+        rebuildTower(); 
+        activeRipples.push(performance.now());
+        
+    } else {
+        gameState.snake.pop();
+        updateComboFadeUI(); 
+    }
+
+    let isOnFoodLayer = (gameState.snake[0].y === gameState.food.y);
+    if (isOnFoodLayer && !gameState.wasOnFoodLayer && !ate) {
+        playSFX('layer_match');
+    }
+    gameState.wasOnFoodLayer = isOnFoodLayer;
+
+    rebuildSceneFromState();
+    updateLayerHighlight();
+    updateHeightIndicators();
+}
+
+function gameLoop(time) {
+    animationFrameId = requestAnimationFrame(gameLoop);
+
+    camera.position.lerp(targetCamPos, 0.08);
+    camera.lookAt(0, 0, 0);
+    
+    updateResponsiveTower(); 
+    updateHeightIndicatorPosition(); 
+
+    if (foodMesh && foodMesh.children.length > 0) {
+        foodMesh.rotation.y += 0.05;
+        foodMesh.rotation.x += 0.03;
+        
+        let insideSnake = false;
+        for (let seg of gameState.snake) {
+            if (seg.x === gameState.food.x && seg.y === gameState.food.y && seg.z === gameState.food.z) {
+                insideSnake = true; break;
+            }
+        }
+        const targetScale = insideSnake ? 0.35 : 1.0;
+        foodMesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15);
+
+        if (gameState.snake.length > 0 && gameState.snake[0].y === gameState.food.y) {
+            const intensity = 0.1 + (Math.sin(time * 0.01) + 1) * 0.3; 
+            foodMesh.children[0].material.emissiveIntensity = intensity; 
+            foodMesh.material.emissiveIntensity = intensity;             
+        } else {
+            foodMesh.children[0].material.emissiveIntensity = 0.1;
+            foodMesh.material.emissiveIntensity = 0.1;
+        }
+    }
+    
+    if (ghostFoodMesh) {
+        ghostFoodMesh.rotation.y -= 0.03;
+        ghostFoodMesh.rotation.z += 0.02;
+        
+        let insideSnake = false;
+        for (let seg of gameState.snake) {
+            if (seg.x === gameState.nextFood.x && seg.y === gameState.nextFood.y && seg.z === gameState.nextFood.z) {
+                insideSnake = true; break;
+            }
+        }
+        const targetScale = insideSnake ? 0.35 : 1.0;
+        ghostFoodMesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15);
+    }
+
+    if (towerContainer && towerGroup.visible) {
+        towerContainer.rotation.y -= 0.01; 
+    }
+
+    const len = gameState.snake.length;
+    for (let i = 0; i < len; i++) {
+        let currentScale = 1.0;
+        activeRipples.forEach(startTime => {
+            let elapsed = time - startTime;
+            let peakIndex = elapsed / 60; 
+            let dist = Math.abs(peakIndex - i);
+            if (dist < 3) { 
+                let bump = Math.cos(dist * Math.PI / 3) * 0.5 + 0.5;
+                currentScale = Math.max(currentScale, 1.0 + bump * 0.35); 
+            }
+        });
+
+        if (snakeMeshes[i]) {
+            snakeMeshes[i].scale.set(currentScale, currentScale, currentScale);
+        }
+        if (towerContainer && towerContainer.children[i] && towerGroup.visible) {
+            towerContainer.children[i].scale.set(currentScale, currentScale, currentScale);
+        }
+    }
+    activeRipples = activeRipples.filter(startTime => (time - startTime) / 60 < len + 3);
+
+    if (gameState.isPlaying && !gameState.isPaused) {
+        const interval = {1: 800, 2: 600, 3: 450, 4: 300, 5: 200, 6: 150}[gameState.speedLvl];
+        if (time - lastMoveTime > interval) {
+            stepGame();
+            lastMoveTime = time;
+        }
+    }
+
+    renderer.render(scene, camera);
+}
+
+window.onload = () => {
+    initThree();
+    setLang('zh'); 
+    animationFrameId = requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>
