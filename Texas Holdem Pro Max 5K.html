@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>极简德州扑克 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['system-ui', 'sans-serif'], mono: ['ui-monospace', 'monospace'] } } }
+        }
+    </script>
+    <style>
+        [v-cloak] { display: none; }
+        ::-webkit-scrollbar { display: none; }
+        .card-enter { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        body { height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+        
+        /* 深绿色主题 */
+        html.theme-green body { background-color: #072a15 !important; }
+        html.theme-green header { border-color: #124d26 !important; }
+        html.theme-green footer { background-color: rgba(7, 42, 21, 0.95) !important; border-color: #124d26 !important; }
+        html.theme-green #lobby-view > div, html.theme-green #custom-confirm > div, html.theme-green #save-modal > div { background-color: #0b381c !important; border-color: #186632 !important; }
+        html.theme-green .dark\:bg-\[\#111\] { background-color: #0b381c !important; }
+        html.theme-green .dark\:bg-\[\#0a0a0a\] { background-color: #072a15 !important; }
+        html.theme-green .dark\:border-gray-800 { border-color: #124d26 !important; }
+        html.theme-green .dark\:border-gray-700 { border-color: #186632 !important; }
+        html.theme-green .dark\:hover\:bg-gray-800:hover { background-color: #124d26 !important; }
+        html.theme-green .dark\:bg-gray-900 { background-color: #093018 !important; }
+
+        /* 浅香槟金主题 */
+        html.theme-champagne body { background-color: #F8F5F0 !important; color: #5C4A3D !important; }
+        html.theme-champagne header { border-color: #E8DFD1 !important; }
+        html.theme-champagne footer { background-color: rgba(248, 245, 240, 0.95) !important; border-color: #E8DFD1 !important; }
+        html.theme-champagne #lobby-view > div, html.theme-champagne #custom-confirm > div, html.theme-champagne #save-modal > div { background-color: #FDFBF8 !important; border-color: #D9CBB8 !important; }
+        html.theme-champagne .border-gray-200, html.theme-champagne .border-gray-300, html.theme-champagne .border-gray-400 { border-color: #D9CBB8 !important; }
+        html.theme-champagne .border-black { border-color: #8A735C !important; }
+        html.theme-champagne .bg-black { background-color: #8A735C !important; color: white !important; }
+        html.theme-champagne .text-black { color: #5C4A3D !important; }
+        html.theme-champagne .bg-white { background-color: #FDFBF8 !important; }
+        html.theme-champagne .hover\:bg-gray-100:hover, html.theme-champagne .hover\:bg-gray-200:hover { background-color: #F0E6D5 !important; }
+        html.theme-champagne .bg-gray-50, html.theme-champagne .bg-gray-200 { background-color: #F0E6D5 !important; }
+        html.theme-champagne .card-enter { border-color: #8A735C !important; }
+
+        /* 深灰色主题 */
+        html.theme-dark-gray body { background-color: #1e1e1e !important; color: #f0f0f0 !important; }
+        html.theme-dark-gray header { border-color: #333 !important; }
+        html.theme-dark-gray footer { background-color: rgba(30, 30, 30, 0.95) !important; border-color: #333 !important; }
+        html.theme-dark-gray #lobby-view > div, html.theme-dark-gray #custom-confirm > div, html.theme-dark-gray #save-modal > div { background-color: #2d2d2d !important; border-color: #444 !important; }
+        html.theme-dark-gray .bg-white, html.theme-dark-gray .dark\:bg-\[\#111\] { background-color: #2d2d2d !important; }
+        html.theme-dark-gray .dark\:bg-\[\#0a0a0a\] { background-color: #1e1e1e !important; }
+        html.theme-dark-gray .border-gray-200, html.theme-dark-gray .border-gray-300, html.theme-dark-gray .border-gray-400, html.theme-dark-gray .dark\:border-gray-700, html.theme-dark-gray .dark\:border-gray-800 { border-color: #444 !important; }
+        html.theme-dark-gray .border-black { border-color: #f0f0f0 !important; }
+        html.theme-dark-gray .bg-black { background-color: #f0f0f0 !important; color: #1e1e1e !important; }
+        html.theme-dark-gray .text-black { color: #f0f0f0 !important; }
+
+        /* 浅灰色主题 */
+        html.theme-light-gray body { background-color: #c9ccd1 !important; color: #1a1a1a !important; }
+        html.theme-light-gray header { border-color: #aeb3bc !important; }
+        html.theme-light-gray footer { background-color: rgba(201, 204, 209, 0.95) !important; border-color: #aeb3bc !important; }
+        html.theme-light-gray #lobby-view > div, html.theme-light-gray #custom-confirm > div, html.theme-light-gray #save-modal > div { background-color: #dfe1e5 !important; border-color: #aeb3bc !important; }
+        html.theme-light-gray .bg-black { background-color: #1a1a1a !important; color: #fff !important; }
+        html.theme-light-gray .border-black { border-color: #1a1a1a !important; }
+        html.theme-light-gray .border-gray-200, html.theme-light-gray .border-gray-300, html.theme-light-gray .border-gray-400 { border-color: #aeb3bc !important; }
+        html.theme-light-gray .bg-white, html.theme-light-gray .bg-gray-50 { background-color: #dfe1e5 !important; }
+        html.theme-light-gray .hover\:bg-gray-100:hover, html.theme-light-gray .hover\:bg-gray-200:hover, html.theme-light-gray .hover\:bg-gray-800:hover { background-color: #c9ccd1 !important; }
+
+        /* 深粉紫主题 */
+        html.theme-dark-pink body { background-color: #2d1b2e !important; color: #fce4ec !important; }
+        html.theme-dark-pink header { border-color: #4a2c4d !important; }
+        html.theme-dark-pink footer { background-color: rgba(45, 27, 46, 0.95) !important; border-color: #4a2c4d !important; }
+        html.theme-dark-pink #lobby-view > div, html.theme-dark-pink #custom-confirm > div, html.theme-dark-pink #save-modal > div { background-color: #3a233b !important; border-color: #6b3f6e !important; }
+        html.theme-dark-pink .bg-white, html.theme-dark-pink .dark\:bg-\[\#111\] { background-color: #3a233b !important; }
+        html.theme-dark-pink .dark\:bg-\[\#0a0a0a\] { background-color: #2d1b2e !important; }
+        html.theme-dark-pink .border-gray-200, html.theme-dark-pink .border-gray-300, html.theme-dark-pink .border-gray-400, html.theme-dark-pink .dark\:border-gray-700, html.theme-dark-pink .dark\:border-gray-800 { border-color: #6b3f6e !important; }
+        html.theme-dark-pink .border-black { border-color: #fce4ec !important; }
+        html.theme-dark-pink .bg-black { background-color: #fce4ec !important; color: #2d1b2e !important; }
+        html.theme-dark-pink .text-black { color: #fce4ec !important; }
+
+        /* 浅粉紫主题 */
+        html.theme-light-pink body { background-color: #fff0f5 !important; color: #4a148c !important; }
+        html.theme-light-pink header { border-color: #f8bbd0 !important; }
+        html.theme-light-pink footer { background-color: rgba(255, 240, 245, 0.95) !important; border-color: #f8bbd0 !important; }
+        html.theme-light-pink #lobby-view > div, html.theme-light-pink #custom-confirm > div, html.theme-light-pink #save-modal > div { background-color: #ffffff !important; border-color: #f48fb1 !important; }
+        html.theme-light-pink .bg-black { background-color: #4a148c !important; color: #fff !important; }
+        html.theme-light-pink .border-black { border-color: #4a148c !important; }
+        html.theme-light-pink .border-gray-200, html.theme-light-pink .border-gray-300, html.theme-light-pink .border-gray-400 { border-color: #f48fb1 !important; }
+        html.theme-light-pink .bg-white { background-color: #fff !important; }
+
+        /* 深湖蓝主题 */
+        html.theme-dark-lake body { background-color: #0d1b2a !important; color: #e0e1dd !important; }
+        html.theme-dark-lake header { border-color: #1b263b !important; }
+        html.theme-dark-lake footer { background-color: rgba(13, 27, 42, 0.95) !important; border-color: #1b263b !important; }
+        html.theme-dark-lake #lobby-view > div, html.theme-dark-lake #custom-confirm > div, html.theme-dark-lake #save-modal > div { background-color: #1b263b !important; border-color: #415a77 !important; }
+        html.theme-dark-lake .bg-white, html.theme-dark-lake .dark\:bg-\[\#111\] { background-color: #1b263b !important; }
+        html.theme-dark-lake .dark\:bg-\[\#0a0a0a\] { background-color: #0d1b2a !important; }
+        html.theme-dark-lake .border-gray-200, html.theme-dark-lake .border-gray-300, html.theme-dark-lake .border-gray-400, html.theme-dark-lake .dark\:border-gray-700, html.theme-dark-lake .dark\:border-gray-800 { border-color: #415a77 !important; }
+        html.theme-dark-lake .border-black { border-color: #778da9 !important; }
+        html.theme-dark-lake .bg-black { background-color: #778da9 !important; color: #0d1b2a !important; }
+        html.theme-dark-lake .text-black { color: #778da9 !important; }
+
+        /* 浅湖蓝主题 */
+        html.theme-light-lake body { background-color: #f0f8ff !important; color: #003366 !important; }
+        html.theme-light-lake header { border-color: #b0c4de !important; }
+        html.theme-light-lake footer { background-color: rgba(240, 248, 255, 0.95) !important; border-color: #b0c4de !important; }
+        html.theme-light-lake #lobby-view > div, html.theme-light-lake #custom-confirm > div, html.theme-light-lake #save-modal > div { background-color: #ffffff !important; border-color: #add8e6 !important; }
+        html.theme-light-lake .bg-black { background-color: #003366 !important; color: #fff !important; }
+        html.theme-light-lake .border-black { border-color: #003366 !important; }
+        html.theme-light-lake .border-gray-200, html.theme-light-lake .border-gray-300, html.theme-light-lake .border-gray-400 { border-color: #b0c4de !important; }
+        html.theme-light-lake .bg-white { background-color: #fff !important; }
+
+        /* 深爱马仕橙主题 */
+        html.theme-dark-orange body { background-color: #1a110a !important; color: #fcece3 !important; }
+        html.theme-dark-orange header { border-color: #3b200e !important; }
+        html.theme-dark-orange footer { background-color: rgba(26, 17, 10, 0.95) !important; border-color: #3b200e !important; }
+        html.theme-dark-orange #lobby-view > div, html.theme-dark-orange #custom-confirm > div, html.theme-dark-orange #save-modal > div { background-color: #2b170a !important; border-color: #e56b1f !important; }
+        html.theme-dark-orange .bg-white, html.theme-dark-orange .dark\:bg-\[\#111\] { background-color: #2b170a !important; }
+        html.theme-dark-orange .dark\:bg-\[\#0a0a0a\] { background-color: #1a110a !important; }
+        html.theme-dark-orange .border-gray-200, html.theme-dark-orange .border-gray-300, html.theme-dark-orange .border-gray-400, html.theme-dark-orange .dark\:border-gray-700, html.theme-dark-orange .dark\:border-gray-800 { border-color: #633314 !important; }
+        html.theme-dark-orange .border-black { border-color: #f37021 !important; }
+        html.theme-dark-orange .bg-black { background-color: #f37021 !important; color: #fff !important; }
+        html.theme-dark-orange .text-black { color: #f37021 !important; }
+
+        /* 浅草绿主题 */
+        html.theme-light-grass body { background-color: #f6faed !important; color: #2d4a22 !important; }
+        html.theme-light-grass header { border-color: #c5d8a4 !important; }
+        html.theme-light-grass footer { background-color: rgba(246, 250, 237, 0.95) !important; border-color: #c5d8a4 !important; }
+        html.theme-light-grass #lobby-view > div, html.theme-light-grass #custom-confirm > div, html.theme-light-grass #save-modal > div { background-color: #ffffff !important; border-color: #9cb878 !important; }
+        html.theme-light-grass .bg-black { background-color: #4a7c2e !important; color: #fff !important; }
+        html.theme-light-grass .border-black { border-color: #4a7c2e !important; }
+        html.theme-light-grass .border-gray-200, html.theme-light-grass .border-gray-300, html.theme-light-grass .border-gray-400 { border-color: #c5d8a4 !important; }
+        html.theme-light-grass .bg-white { background-color: #fff !important; }
+
+        /* 深暗紫主题 */
+        html.theme-dark-purple body { background-color: #1a0b2e !important; color: #e9d5ff !important; }
+        html.theme-dark-purple header { border-color: #2d1b4e !important; }
+        html.theme-dark-purple footer { background-color: rgba(26, 11, 46, 0.95) !important; border-color: #2d1b4e !important; }
+        html.theme-dark-purple #lobby-view > div, html.theme-dark-purple #custom-confirm > div, html.theme-dark-purple #save-modal > div { background-color: #2d1b4e !important; border-color: #4c1d95 !important; }
+        html.theme-dark-purple .bg-white, html.theme-dark-purple .dark\:bg-\[\#111\] { background-color: #2d1b4e !important; }
+        html.theme-dark-purple .dark\:bg-\[\#0a0a0a\] { background-color: #1a0b2e !important; }
+        html.theme-dark-purple .border-gray-200, html.theme-dark-purple .border-gray-300, html.theme-dark-purple .border-gray-400, html.theme-dark-purple .dark\:border-gray-700, html.theme-dark-purple .dark\:border-gray-800 { border-color: #4c1d95 !important; }
+        html.theme-dark-purple .border-black { border-color: #e9d5ff !important; }
+        html.theme-dark-purple .bg-black { background-color: #e9d5ff !important; color: #1a0b2e !important; }
+        html.theme-dark-purple .text-black { color: #e9d5ff !important; }
+
+        /* 深绯红主题 */
+        html.theme-dark-crimson body { background-color: #3b0918 !important; color: #fecdd3 !important; }
+        html.theme-dark-crimson header { border-color: #701a31 !important; }
+        html.theme-dark-crimson footer { background-color: rgba(59, 9, 24, 0.95) !important; border-color: #701a31 !important; }
+        html.theme-dark-crimson #lobby-view > div, html.theme-dark-crimson #custom-confirm > div, html.theme-dark-crimson #save-modal > div { background-color: #500f24 !important; border-color: #9f1239 !important; }
+        html.theme-dark-crimson .bg-white, html.theme-dark-crimson .dark\:bg-\[\#111\] { background-color: #500f24 !important; }
+        html.theme-dark-crimson .dark\:bg-\[\#0a0a0a\] { background-color: #3b0918 !important; }
+        html.theme-dark-crimson .border-gray-200, html.theme-dark-crimson .border-gray-300, html.theme-dark-crimson .border-gray-400, html.theme-dark-crimson .dark\:border-gray-700, html.theme-dark-crimson .dark\:border-gray-800 { border-color: #9f1239 !important; }
+        html.theme-dark-crimson .border-black { border-color: #fecdd3 !important; }
+        html.theme-dark-crimson .bg-black { background-color: #fecdd3 !important; color: #3b0918 !important; }
+        html.theme-dark-crimson .text-black { color: #fecdd3 !important; }
+
+        /* 浅中黄主题 */
+        html.theme-light-mid-yellow body { background-color: #fdf6e3 !important; color: #655b3f !important; }
+        html.theme-light-mid-yellow header { border-color: #e6dcae !important; }
+        html.theme-light-mid-yellow footer { background-color: rgba(253, 246, 227, 0.95) !important; border-color: #e6dcae !important; }
+        html.theme-light-mid-yellow #lobby-view > div, html.theme-light-mid-yellow #custom-confirm > div, html.theme-light-mid-yellow #save-modal > div { background-color: #ffffff !important; border-color: #fde68a !important; }
+        html.theme-light-mid-yellow .bg-black { background-color: #655b3f !important; color: #fff !important; }
+        html.theme-light-mid-yellow .border-black { border-color: #655b3f !important; }
+        html.theme-light-mid-yellow .border-gray-200, html.theme-light-mid-yellow .border-gray-300, html.theme-light-mid-yellow .border-gray-400 { border-color: #e6dcae !important; }
+        html.theme-light-mid-yellow .bg-white { background-color: #fff !important; }
+
+        /* 浅爱马仕橙主题 */
+        html.theme-light-hermes body { background-color: #fff4ed !important; color: #9c4221 !important; }
+        html.theme-light-hermes header { border-color: #fcd3b6 !important; }
+        html.theme-light-hermes footer { background-color: rgba(255, 244, 237, 0.95) !important; border-color: #fcd3b6 !important; }
+        html.theme-light-hermes #lobby-view > div, html.theme-light-hermes #custom-confirm > div, html.theme-light-hermes #save-modal > div { background-color: #ffffff !important; border-color: #fb923c !important; }
+        html.theme-light-hermes .bg-black { background-color: #9c4221 !important; color: #fff !important; }
+        html.theme-light-hermes .border-black { border-color: #9c4221 !important; }
+        html.theme-light-hermes .border-gray-200, html.theme-light-hermes .border-gray-300, html.theme-light-hermes .border-gray-400 { border-color: #fcd3b6 !important; }
+        html.theme-light-hermes .bg-white { background-color: #fff !important; }
+    </style>
+</head>
+<body class="bg-[#fafafa] text-gray-900 dark:bg-[#0a0a0a] dark:text-gray-100 font-sans antialiased selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black w-full h-[100dvh] relative overflow-hidden">
+
+    <!-- 核心约束容器 -->
+    <div id="app-container" class="fixed top-[10vh] bottom-[25vh] left-0 right-0 flex flex-col w-full max-w-4xl mx-auto z-10">
+        
+        <!-- Global Top Bar -->
+        <header id="top-bar" class="border-b-[1px] border-gray-200 dark:border-gray-800 p-1.5 sm:p-2 shrink-0 flex justify-between items-center bg-inherit z-50 relative bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md">
+            <!-- 极简高级的艺术化标题，带有协调的装饰图案 -->
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-1 opacity-90 select-none">
+                <span class="text-[10px] sm:text-[12px] opacity-40 text-gray-600 dark:text-gray-400 font-serif">✦</span>
+                <h1 style="font-family: 'Didot', 'Bodoni MT', 'Times New Roman', serif;" class="text-[13px] sm:text-[15px] font-bold tracking-[0.35em] uppercase drop-shadow-sm leading-none mt-[2px]">Texas Hold'em</h1>
+                <span class="text-[10px] sm:text-[12px] opacity-40 text-gray-600 dark:text-gray-400 font-serif">✦</span>
+            </div>
+            
+            <div class="flex items-center justify-end flex-wrap gap-1.5 sm:gap-2 overflow-visible">
+                <span id="ui-stage-text" class="text-[8px] uppercase tracking-widest opacity-50 font-mono hidden sm:inline-block">LOBBY</span>
+                
+                <button id="btn-return-lobby" onclick="app.returnToLobby()" class="hidden items-center gap-0.5 text-[8px] sm:text-[9px] font-mono tracking-widest uppercase px-1.5 py-1 border-[1px] border-gray-400 dark:border-gray-600 opacity-50 hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all rounded-md shrink-0">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    <span id="txt-btn-lobby">返回</span>
+                </button>
+
+                <!-- RPG Save System Button -->
+                <button onclick="app.toggleSavePanel()" class="flex items-center opacity-70 hover:opacity-100 transition p-1 text-[8px] sm:text-[9px] font-mono tracking-widest uppercase border-[1px] border-gray-300 dark:border-gray-700 rounded-md shrink-0">
+                    <svg class="w-3 h-3 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <span id="txt-btn-save">存档</span>
+                </button>
+
+                <!-- 音效菜单按钮 -->
+                <div class="relative flex items-center">
+                    <button onclick="app.toggleSoundPanel(event)" class="flex items-center opacity-70 hover:opacity-100 transition p-1 text-[8px] sm:text-[9px] font-mono tracking-widest uppercase border-[1px] border-gray-300 dark:border-gray-700 rounded-md shrink-0">
+                        <span id="txt-btn-sound">🔇 OFF</span>
+                    </button>
+                    <div id="sound-panel" class="hidden absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border-[1px] border-gray-300 dark:border-gray-700 rounded-md shadow-xl z-50 flex-col p-1 w-[85px] sm:w-[95px]">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+                
+                <button onclick="app.toggleLang()" class="flex items-center gap-0.5 opacity-70 hover:opacity-100 transition p-1 text-[8px] sm:text-[9px] font-mono tracking-widest uppercase shrink-0">
+                    <span id="lang-display">ZH</span>
+                </button>
+
+                <!-- 主题颜色菜单按钮 -->
+                <div class="relative flex items-center">
+                    <button onclick="app.toggleThemePanel(event)" class="opacity-70 hover:opacity-100 transition p-1 shrink-0">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+                    </button>
+                    <div id="theme-panel" onclick="event.stopPropagation()" class="hidden absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border-[1px] border-gray-300 dark:border-gray-700 rounded-md shadow-xl z-50 grid grid-cols-4 gap-2 p-2 w-[140px] sm:w-[150px]">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- === LOBBY VIEW === -->
+        <main id="lobby-view" class="flex-1 flex flex-col items-center justify-center p-2 h-full relative z-10 overflow-auto">
+            <div class="max-w-xs sm:max-w-sm w-full border-[1px] border-gray-300 dark:border-gray-700 p-4 sm:p-6 flex flex-col items-center gap-4 shadow-2xl bg-white dark:bg-[#111] relative z-10 rounded-md">
+                <div class="text-center space-y-1">
+                    <h2 id="txt-lobby-title" class="text-base sm:text-lg font-bold tracking-widest uppercase">开始游戏</h2>
+                    <p id="txt-lobby-subtitle" class="text-[9px] opacity-50 tracking-widest uppercase font-mono">选择对手 (1-9位)</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-1.5 sm:gap-2 w-full" id="lobby-player-btns"></div>
+
+                <div class="w-full space-y-1 text-[9px] font-mono opacity-50 text-center" id="txt-lobby-rules">
+                    <p>初始筹码: 5000 | 盲注: 20/20 | 限注: 200</p>
+                </div>
+
+                <div class="flex w-full gap-2 mt-1">
+                    <button onclick="app.randomizeAIs()" class="flex-1 px-1 py-2 border-[1px] border-gray-400 rounded-md text-[9px] font-bold uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-gray-700 dark:text-gray-300">
+                        随机 RND
+                    </button>
+                    <button id="btn-enter" onclick="app.startGame()" class="flex-[2] px-2 py-2 border-[1px] rounded-md border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:bg-transparent hover:text-black dark:hover:bg-transparent dark:hover:text-white transition-all text-[9px] uppercase tracking-[0.2em] font-bold disabled:opacity-30 disabled:cursor-not-allowed">
+                        坐下 ENTER
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 text-[8px] opacity-30 font-mono tracking-[0.3em] uppercase relative z-10">
+                Programmed by RaynEhu
+            </div>
+        </main>
+
+        <!-- === GAME VIEW === -->
+        <div id="game-view" class="hidden flex-1 flex-col h-full relative w-full overflow-hidden">
+            
+            <main class="flex-1 flex flex-col items-center justify-between pt-2 pb-1 px-1 relative w-full h-full z-10 overflow-visible">
+                
+                <div class="flex flex-nowrap justify-center gap-0.5 sm:gap-1 w-full mt-2 px-1 overflow-visible" id="ai-players-container"></div>
+
+                <div class="flex flex-col items-center gap-1 w-full my-auto shrink-0 transition-all duration-500" id="center-board-container"></div>
+                
+                <!-- 状态行增加下边距 mb-4 sm:mb-6 将其向上推，彻底解决与玩家牌状态黑色方块重叠冲突的问题 -->
+                <div class="text-[8px] sm:text-[9px] font-mono opacity-50 tracking-wide text-center w-full max-w-md h-3 overflow-hidden mt-0 mb-4 sm:mb-6 shrink-0 bg-white/50 dark:bg-black/50 rounded-full" id="game-log"></div>
+
+                <div class="relative w-full flex items-end justify-center pb-1 shrink-0 gap-4" id="human-player-container"></div>
+            </main>
+
+            <footer class="border-t-[1px] border-gray-200 dark:border-gray-800 p-1.5 sm:p-2 shrink-0 bg-white/95 dark:bg-[#0a0a0a]/95 z-40 relative flex flex-col" id="action-bar">
+                <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-1.5 max-w-4xl mx-auto relative z-20">
+                    <div class="flex w-full sm:w-auto gap-1.5 h-8 sm:h-10 shrink-0">
+                        <button id="btn-fold" onclick="game.humanAction('fold')" class="flex-1 px-2 border-[1px] rounded-full border-gray-300 dark:border-gray-700 hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors text-[9px] uppercase tracking-widest font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center">
+                            弃牌
+                        </button>
+                        <button id="btn-call" onclick="game.humanAction('call')" class="flex-1 px-2 border-[1px] rounded-full border-gray-300 dark:border-gray-700 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors text-[9px] uppercase tracking-widest font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center">
+                            跟注
+                        </button>
+                    </div>
+
+                    <!-- 下注操作区：圆形按钮、分数区加宽、加注按钮缩短 -->
+                    <div class="flex w-full sm:w-auto items-center gap-1.5 h-8 sm:h-10 shrink-0" id="raise-container">
+                        <div class="flex items-center justify-between flex-1 bg-gray-200/40 dark:bg-[#111]/60 rounded-full px-1 py-0.5 border-[1px] border-gray-300 dark:border-gray-700 shadow-inner h-full">
+                            <button onclick="game.adjustRaise(-100)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-sub100">-100</button>
+                            <button onclick="game.adjustRaise(-50)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-sub50">-50</button>
+                            <button onclick="game.adjustRaise(-10)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-sub">-10</button>
+                            
+                            <div class="flex items-center justify-center px-1 font-mono text-[11px] sm:text-xs font-bold w-12 sm:w-16 text-center shrink-0 tracking-wider" id="raise-val">20</div>
+                            
+                            <button onclick="game.adjustRaise(10)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-add">+10</button>
+                            <button onclick="game.adjustRaise(50)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-add50">+50</button>
+                            <button onclick="game.adjustRaise(100)" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-[1px] border-gray-300 dark:border-gray-600 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[7px] sm:text-[9px] shadow-sm shrink-0" id="btn-raise-add100">+100</button>
+                            <button onclick="game.setMaxRaise()" class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-800 text-white dark:bg-gray-200 dark:text-black hover:bg-black dark:hover:bg-white border-[1px] border-gray-800 dark:border-gray-200 font-mono transition-transform disabled:opacity-30 active:scale-90 flex items-center justify-center text-[6px] sm:text-[7px] font-bold shadow-sm shrink-0" id="btn-raise-max">MAX</button>
+                        </div>
+                        <button id="btn-raise" onclick="game.humanAction('raise')" class="shrink-0 w-[3.5rem] sm:w-[4.5rem] h-full px-1 border-[1px] rounded-full border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:bg-transparent hover:text-black dark:hover:bg-transparent dark:hover:text-white transition-colors text-[10px] sm:text-[11px] uppercase tracking-widest font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center">
+                            加注
+                        </button>
+                    </div>
+
+                    <div id="next-hand-container" class="hidden w-full sm:w-auto h-8 sm:h-10 shrink-0">
+                        <button id="btn-next" onclick="game.startHand()" class="w-full h-full px-6 border-[1px] rounded-full border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:bg-transparent hover:text-black dark:hover:bg-transparent dark:hover:text-white transition-colors text-[10px] uppercase tracking-widest font-bold flex items-center justify-center shadow-md hover:shadow-none">
+                            下一局
+                        </button>
+                    </div>
+                </div>
+                <!-- 保证在横向布局下，制作者区域不会覆盖和影响上方任何可点击按钮的正常交互 -->
+                <div class="w-full text-center mt-1.5 text-[7px] sm:text-[8px] opacity-30 font-mono tracking-widest uppercase pointer-events-none shrink-0 relative z-10">
+                    Programmed by RaynEhu
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- 游戏存档弹窗 -->
+    <div id="save-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity" onclick="app.closeSavePanel(event)">
+        <div onclick="event.stopPropagation()" class="bg-white dark:bg-[#111] p-4 sm:p-5 rounded-md border-[1px] border-black dark:border-white shadow-2xl w-[90%] max-w-lg max-h-[90vh] flex flex-col relative">
+            <button onclick="app.closeSavePanel()" class="absolute top-3 right-3 text-gray-500 hover:text-black dark:hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 id="save-title" class="text-sm sm:text-base font-bold font-mono tracking-widest text-center mb-4 uppercase">游戏存档 ARCHIVES</h3>
+            <div id="save-slots-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 overflow-y-auto pr-1 flex-1 min-h-0">
+                <!-- slots dynamically rendered -->
+            </div>
+            <div class="flex gap-2 sm:gap-3 mt-4 pt-4 border-t-[1px] border-gray-200 dark:border-gray-800 shrink-0">
+                <button id="btn-save-action" onclick="saveManager.actionSave()" class="flex-1 rounded-md px-2 py-2.5 sm:py-2 border-[1px] border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:bg-transparent hover:text-black dark:hover:bg-transparent dark:hover:text-white text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed">保存 SAVE</button>
+                <button id="btn-load-action" onclick="saveManager.actionLoad()" class="flex-1 rounded-md px-2 py-2.5 sm:py-2 border-[1px] border-gray-400 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-black dark:text-white">读取 LOAD</button>
+            </div>
+            
+            <!-- 导出/导入存档 -->
+            <div class="mt-3 flex justify-between items-center px-1 shrink-0">
+                <button id="btn-import-action" onclick="document.getElementById('import-file').click()" class="text-[9px] font-mono text-gray-500 hover:text-black dark:hover:text-white underline decoration-dashed underline-offset-2 transition-colors">↑ 导入存档 (Import)</button>
+                <input type="file" id="import-file" accept=".json" class="hidden" onchange="saveManager.importData(event)">
+                <button id="btn-export-action" onclick="saveManager.exportData()" class="text-[9px] font-mono text-gray-500 hover:text-black dark:hover:text-white underline decoration-dashed underline-offset-2 transition-colors">↓ 导出存档 (Export)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义确认弹窗 -->
+    <div id="custom-confirm" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-[#111] p-6 rounded-md border-[1px] border-black dark:border-white shadow-2xl max-w-xs w-full mx-4 flex flex-col items-center">
+            <p id="confirm-msg" class="text-xs sm:text-sm font-mono mb-6 text-center text-black dark:text-white whitespace-pre-line"></p>
+            <div class="flex gap-4 w-full">
+                <button id="btn-confirm-cancel" onclick="app.cancelConfirm()" class="flex-1 rounded-md px-4 py-2 border-[1px] border-gray-400 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-bold uppercase tracking-widest transition-colors text-black dark:text-white">取消</button>
+                <button id="btn-confirm-ok" onclick="app.executeConfirm()" class="flex-1 rounded-md px-4 py-2 bg-red-600 hover:bg-red-500 text-white border-[1px] border-red-600 text-xs font-bold uppercase tracking-widest transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Save Manager System ---
+        const saveManager = {
+            slots: new Array(8).fill(null),
+            selectedSlot: null,
+            init() {
+                try {
+                    const saved = localStorage.getItem('texasholdem_saves');
+                    if (saved) {
+                        this.slots = JSON.parse(saved);
+                    }
+                } catch (e) {}
+            },
+            selectSlot(idx) {
+                this.selectedSlot = idx;
+                this.renderSlots();
+            },
+            renderSlots() {
+                const container = document.getElementById('save-slots-container');
+                if (!container) return;
+                let html = '';
+                this.slots.forEach((slot, idx) => {
+                    const isSelected = this.selectedSlot === idx;
+                    const borderClass = isSelected ? 'border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] ring-1 ring-blue-500 scale-[1.02] z-10' : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 opacity-80 hover:opacity-100';
+                    const bgClass = isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'bg-transparent';
+
+                    if (!slot) {
+                        html += `
+                        <button onclick="saveManager.selectSlot(${idx})" class="w-full text-left p-2 sm:p-3 rounded-md border-[1px] transition-all flex flex-col items-center justify-center min-h-[4rem] sm:min-h-[4.5rem] relative ${borderClass} ${bgClass}">
+                            <span class="absolute top-1 left-1.5 text-[8px] font-mono opacity-40 font-bold text-black dark:text-white">0${idx + 1}</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold opacity-40 text-center uppercase tracking-widest text-black dark:text-white">${t('slotEmpty')}</span>
+                        </button>`;
+                    } else {
+                        html += `
+                        <button onclick="saveManager.selectSlot(${idx})" class="w-full text-left p-2 sm:p-3 rounded-md border-[1px] transition-all flex flex-col justify-between min-h-[4rem] sm:min-h-[4.5rem] relative overflow-hidden ${borderClass} ${bgClass}">
+                            <span class="absolute top-1 left-1.5 text-[8px] font-mono opacity-50 font-bold text-black dark:text-white">0${idx + 1}</span>
+                            <div class="w-full flex justify-between items-center mt-2.5">
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold truncate pr-1 text-black dark:text-white opacity-80">${slot.timestamp}</span>
+                                <span class="text-[10px] sm:text-[11px] font-mono text-yellow-600 dark:text-yellow-500 font-bold shrink-0 drop-shadow-sm">💰 ${slot.players[0].chips}</span>
+                            </div>
+                            <div class="text-[7.5px] sm:text-[8px] font-mono opacity-60 mt-1 truncate w-full uppercase tracking-wider text-black dark:text-white">
+                                VS: ${slot.selectedAIs.join(', ')}
+                            </div>
+                        </button>`;
+                    }
+                });
+                container.innerHTML = html;
+
+                const btnSave = document.getElementById('btn-save-action');
+                const btnLoad = document.getElementById('btn-load-action');
+                if (this.selectedSlot !== null) {
+                    btnSave.disabled = false; btnSave.classList.remove('opacity-30', 'cursor-not-allowed');
+                    if (this.slots[this.selectedSlot]) {
+                        btnLoad.disabled = false; btnLoad.classList.remove('opacity-30', 'cursor-not-allowed');
+                    } else {
+                        btnLoad.disabled = true; btnLoad.classList.add('opacity-30', 'cursor-not-allowed');
+                    }
+                } else {
+                    btnSave.disabled = true; btnSave.classList.add('opacity-30', 'cursor-not-allowed');
+                    btnLoad.disabled = true; btnLoad.classList.add('opacity-30', 'cursor-not-allowed');
+                }
+            },
+            actionSave() {
+                if (this.selectedSlot === null) return;
+                if (!game.isActive) {
+                    app.showConfirm(t('msgMustInGame'), null);
+                    document.getElementById('btn-confirm-cancel').classList.add('hidden');
+                    document.getElementById('btn-confirm-ok').innerText = "OK";
+                    return;
+                }
+
+                const executeSave = () => {
+                    const s = game.state;
+                    const data = {
+                        timestamp: new Date().toLocaleString(app.lang === 'zh' ? 'zh-CN' : (app.lang === 'ja' ? 'ja-JP' : 'en-US'), {hour12: false}),
+                        players: s.players.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            isBot: p.isBot,
+                            chips: s.stage === 4 ? p.chips : p.chips + p.roundBet, // Properly save mid-hand economy
+                            rebuyCount: p.rebuyCount
+                        })),
+                        selectedAIs: app.selectedAIs
+                    };
+                    this.slots[this.selectedSlot] = data;
+                    try { localStorage.setItem('texasholdem_saves', JSON.stringify(this.slots)); } catch(e){}
+                    this.renderSlots();
+                };
+
+                if (this.slots[this.selectedSlot]) {
+                    app.showConfirm(t('msgSaveConfirm'), () => { executeSave(); });
+                } else {
+                    executeSave();
+                }
+            },
+            actionLoad() {
+                if (this.selectedSlot === null || !this.slots[this.selectedSlot]) return;
+                app.showConfirm(t('msgLoadConfirm'), () => {
+                    const data = this.slots[this.selectedSlot];
+                    app.selectedAIs = data.selectedAIs;
+                    
+                    // Reconstruct players
+                    game.state.players = data.players.map(p => {
+                         const profile = p.isBot ? AI_PROFILES.find(ai => ai.name === p.name) : null;
+                         return { ...p, profile, bet: 0, roundBet: 0, cards: [], folded: false, hasRaisedThisRound: false, status: '' };
+                    });
+                    
+                    game.isActive = true;
+                    
+                    // UI transitions
+                    document.getElementById('save-modal').classList.add('hidden');
+                    document.getElementById('lobby-view').style.display = 'none';
+                    document.getElementById('btn-return-lobby').classList.remove('hidden');
+                    document.getElementById('btn-return-lobby').classList.add('flex');
+                    const gameView = document.getElementById('game-view');
+                    gameView.style.display = 'flex';
+                    gameView.style.opacity = '1';
+                    
+                    // Reset and start
+                    game.state.dealerIndex = 0;
+                    app.updateUIStrings();
+                    game.startHand();
+                });
+            },
+            exportData() {
+                const dataStr = JSON.stringify(this.slots, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                a.download = `TexasHoldemPro_Saves_${dateStr}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            },
+            importData(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (Array.isArray(imported) && imported.length === 8) {
+                            this.slots = imported;
+                            localStorage.setItem('texasholdem_saves', JSON.stringify(this.slots));
+                            this.selectedSlot = null;
+                            this.renderSlots();
+                            app.showConfirm(t('msgImportSuccess'), null);
+                            document.getElementById('btn-confirm-cancel').classList.add('hidden');
+                            document.getElementById('btn-confirm-ok').innerText = "OK";
+                        } else {
+                            throw new Error("Invalid format");
+                        }
+                    } catch(err) {
+                        app.showConfirm(t('msgImportFail'), null);
+                        document.getElementById('btn-confirm-cancel').classList.add('hidden');
+                        document.getElementById('btn-confirm-ok').innerText = "OK";
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = ''; // Reset input to allow re-importing the same file
+            }
+        };
+
+        // --- 极致古典优雅 立体声音效系统 ---
+        const soundManager = {
+            enabled: false,
+            style: 'classic', // classic, anime, flow, rock, rnb, jazz, chinese, lofi
+            ctx: null,
+            masterGain: null,
+            delayNode: null,
+            init() { 
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                        this.masterGain = this.ctx.createGain();
+                        this.masterGain.gain.value = 0.8;
+                        this.masterGain.connect(this.ctx.destination);
+
+                        // 古典大厅宽阔的混响
+                        this.delayNode = this.ctx.createDelay();
+                        this.delayNode.delayTime.value = 0.3; 
+                        const feedback = this.ctx.createGain();
+                        feedback.gain.value = 0.3; 
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 1200; 
+
+                        this.delayNode.connect(feedback);
+                        feedback.connect(filter);
+                        filter.connect(this.delayNode);
+                        this.delayNode.connect(this.masterGain);
+                    }
+                }
+            },
+            toggle() { 
+                this.enabled = !this.enabled; 
+                if (this.enabled) {
+                    this.init(); 
+                    if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+                }
+                app.renderPanels();
+            },
+            playClassical(freq, type, duration, vol, pan, useDelay=false, attack=0.015) {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const t = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    let panner;
+                    
+                    if (this.ctx.createStereoPanner) {
+                        panner = this.ctx.createStereoPanner();
+                        panner.pan.value = pan;
+                    } else {
+                        panner = this.ctx.createGain(); 
+                    }
+
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, t);
+
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(vol, t + attack);
+                    gain.gain.setTargetAtTime(0, t + attack, duration / 3); // 自然原声乐器衰减感
+
+                    osc.connect(gain);
+                    gain.connect(panner);
+                    panner.connect(this.masterGain);
+                    if (useDelay && this.delayNode) {
+                        panner.connect(this.delayNode);
+                    }
+
+                    osc.start(t);
+                    osc.stop(t + duration * 2);
+                } catch(e){}
+            },
+            playCard() { 
+                const s = this.style;
+                const pan = Math.random() > 0.5 ? 0.3 : -0.3;
+                if (s === 'anime') { this.playClassical(880, 'square', 0.05, 0.01, pan); }
+                else if (s === 'flow') { this.playClassical(659.25, 'sine', 0.2, 0.02, pan, true, 0.05); }
+                else if (s === 'rock') { this.playClassical(110, 'sawtooth', 0.05, 0.02, pan); }
+                else if (s === 'rnb') { this.playClassical(523.25, 'triangle', 0.1, 0.02, pan, false, 0.02); }
+                else if (s === 'jazz') { this.playClassical(440, 'sine', 0.1, 0.02, pan, false, 0.01); }
+                else if (s === 'chinese') { this.playClassical(392, 'sine', 0.2, 0.02, pan, true, 0.01); }
+                else if (s === 'lofi') { this.playClassical(220, 'sine', 0.4, 0.015, pan, true, 0.1); }
+                else {
+                    this.playClassical(440.0, 'sine', 0.1, 0.03, pan, false, 0.005);
+                    setTimeout(() => this.playClassical(554.37, 'triangle', 0.1, 0.02, -pan, false, 0.005), 50);
+                }
+            },
+            playAction(type) {
+                if (!this.enabled || !this.ctx) return;
+                const s = this.style;
+                if (s === 'anime') {
+                    const w = 'square';
+                    if (type === 'fold') { this.playClassical(330, w, 0.1, 0.02, 0); setTimeout(()=>this.playClassical(165, w, 0.2, 0.02, 0), 80); }
+                    else if (type === 'check') this.playClassical(880, w, 0.05, 0.02, 0);
+                    else if (type === 'call') { this.playClassical(440, w, 0.05, 0.02, 0); setTimeout(()=>this.playClassical(660, w, 0.1, 0.02, 0), 60); }
+                    else if (type === 'raise') [440,554,659,880].forEach((f,i)=>setTimeout(()=>this.playClassical(f, w, 0.08, 0.02, 0), i*50));
+                    return;
+                }
+                if (s === 'flow') {
+                    const w = 'sine';
+                    if (type === 'fold') this.playClassical(130.8, w, 0.6, 0.04, 0, true, 0.2);
+                    else if (type === 'check') this.playClassical(329.6, w, 0.3, 0.03, 0, true, 0.1);
+                    else if (type === 'call') { this.playClassical(261.6, w, 0.4, 0.03, 0, true, 0.1); this.playClassical(392, w, 0.4, 0.03, 0, true, 0.1); }
+                    else if (type === 'raise') { this.playClassical(329.6, w, 0.5, 0.03, 0, true, 0.1); this.playClassical(415.3, w, 0.5, 0.03, 0, true, 0.1); this.playClassical(493.9, w, 0.5, 0.03, 0, true, 0.1); }
+                    return;
+                }
+                if (s === 'rock') {
+                    const w = 'sawtooth';
+                    if (type === 'fold') { this.playClassical(82.4, w, 0.3, 0.04, 0); this.playClassical(87.3, w, 0.3, 0.04, 0); }
+                    else if (type === 'check') this.playClassical(164.8, w, 0.08, 0.03, 0);
+                    else if (type === 'call') { this.playClassical(220, w, 0.15, 0.04, 0); this.playClassical(330, w, 0.15, 0.04, 0); }
+                    else if (type === 'raise') { this.playClassical(330, w, 0.2, 0.04, 0); this.playClassical(495, w, 0.2, 0.04, 0); setTimeout(()=>this.playClassical(660, w, 0.2, 0.04, 0), 120); }
+                    return;
+                }
+                if (s === 'rnb') {
+                    const w = 'triangle';
+                    if (type === 'fold') { this.playClassical(349.2, w, 0.2, 0.03, 0); setTimeout(()=>this.playClassical(261.6, w, 0.4, 0.03, 0), 120); }
+                    else if (type === 'check') { this.playClassical(440, w, 0.08, 0.03, 0); setTimeout(()=>this.playClassical(440, w, 0.08, 0.01, 0), 120); }
+                    else if (type === 'call') { [220,261.6,329.6,392].forEach(f=>this.playClassical(f, w, 0.3, 0.03, 0, true)); }
+                    else if (type === 'raise') { [261.6,329.6,392,493.9].forEach(f=>this.playClassical(f, w, 0.4, 0.03, 0, true)); }
+                    return;
+                }
+                if (s === 'jazz') {
+                    const w = 'sine'; const w2 = 'triangle';
+                    if (type === 'fold') { this.playClassical(311.1, w, 0.2, 0.04, 0); setTimeout(()=>this.playClassical(220, w, 0.4, 0.04, 0), 140); }
+                    else if (type === 'check') this.playClassical(110, w, 0.2, 0.05, 0, false, 0.02);
+                    else if (type === 'call') { [220,261.6,311.1,392].forEach(f=>this.playClassical(f, w2, 0.3, 0.03, 0)); }
+                    else if (type === 'raise') { [330,415.3,493.9,587.3].forEach(f=>this.playClassical(f, w2, 0.15, 0.03, 0)); setTimeout(()=>[330,415.3,493.9,587.3].forEach(f=>this.playClassical(f, w2, 0.3, 0.03, 0)), 140); }
+                    return;
+                }
+                if (s === 'chinese') {
+                    if (type === 'fold') { [329.63, 293.66, 261.63].forEach((f,i)=>setTimeout(()=>this.playClassical(f, 'sine', 0.3, 0.02, 0, true, 0.01), i*120)); }
+                    else if (type === 'check') { this.playClassical(329.63, 'sine', 0.2, 0.02, 0, true, 0.01); }
+                    else if (type === 'call') { [392, 440].forEach((f,i)=>setTimeout(()=>this.playClassical(f, 'sine', 0.2, 0.02, 0, true, 0.01), i*120)); }
+                    else if (type === 'raise') { [392, 440, 523.25, 659.25].forEach((f,i)=>setTimeout(()=>this.playClassical(f, 'sine', 0.2, 0.02, 0, true, 0.01), i*80)); }
+                    return;
+                }
+                if (s === 'lofi') {
+                    if (type === 'fold') { [261.63, 220, 164.81].forEach((f,i)=>setTimeout(()=>this.playClassical(f, 'sine', 0.5, 0.02, 0, true, 0.1), i*150)); }
+                    else if (type === 'check') { this.playClassical(196, 'sine', 0.4, 0.02, 0, true, 0.1); }
+                    else if (type === 'call') { [261.63, 329.63].forEach((f,i)=>this.playClassical(f, 'sine', 0.5, 0.015, 0, true, 0.1)); }
+                    else if (type === 'raise') { [261.63, 329.63, 392, 493.88].forEach((f,i)=>setTimeout(()=>this.playClassical(f, 'sine', 0.6, 0.015, 0, true, 0.1), i*100)); }
+                    return;
+                }
+                // classic
+                if (type === 'fold') {
+                    this.playClassical(164.81, 'sine', 0.4, 0.05, 0, false, 0.05);
+                    setTimeout(() => this.playClassical(130.81, 'sine', 0.6, 0.05, 0, false, 0.1), 100);
+                } else if (type === 'check') {
+                    this.playClassical(392.00, 'triangle', 0.1, 0.03, 0, false, 0.01);
+                    setTimeout(() => this.playClassical(392.00, 'triangle', 0.1, 0.02, 0, false, 0.01), 120);
+                } else if (type === 'call') {
+                    this.playClassical(440.00, 'sine', 0.25, 0.04, 0.2, true, 0.02);
+                    this.playClassical(554.37, 'sine', 0.25, 0.03, -0.2, true, 0.02);
+                } else if (type === 'raise') {
+                    this.playClassical(329.63, 'triangle', 0.15, 0.04, -0.3, true, 0.01);
+                    setTimeout(() => this.playClassical(415.30, 'triangle', 0.15, 0.04, 0, true, 0.01), 80);
+                    setTimeout(() => this.playClassical(523.25, 'triangle', 0.3, 0.05, 0.3, true, 0.01), 160);
+                }
+            },
+            playWin() { 
+                const s = this.style;
+                if(s === 'anime') {
+                    const notes = [440, 493.88, 554.37, 587.33, 659.25, 739.99, 830.61, 880];
+                    notes.forEach((freq, i) => setTimeout(() => this.playClassical(freq, 'square', 0.1, 0.03, 0), i * 60));
+                    return;
+                }
+                if(s === 'flow') {
+                    const notes = [261.63, 293.66, 329.63, 392.00, 440.00];
+                    notes.forEach((freq, i) => setTimeout(() => this.playClassical(freq, 'sine', 1.5, 0.04, 0, true, 0.2), i * 150));
+                    return;
+                }
+                if(s === 'rock') {
+                    const notes = [220, 330, 440, 554.37];
+                    notes.forEach((freq, i) => setTimeout(() => { this.playClassical(freq, 'sawtooth', 0.5, 0.05, 0); this.playClassical(freq*1.5, 'sawtooth', 0.5, 0.05, 0); }, i * 150));
+                    return;
+                }
+                if(s === 'rnb') {
+                    const notes = [392, 440, 523.25, 587.33, 659.25];
+                    notes.forEach((freq, i) => setTimeout(() => this.playClassical(freq, 'triangle', 0.4, 0.04, 0, true, 0.05), i * 100));
+                    return;
+                }
+                if(s === 'jazz') {
+                    setTimeout(()=>[293.66, 349.23, 440, 523.25].forEach(f=>this.playClassical(f, 'sine', 0.6, 0.04, 0, true)), 0);
+                    setTimeout(()=>[392, 493.88, 587.33, 698.46].forEach(f=>this.playClassical(f, 'sine', 0.6, 0.04, 0, true)), 400);
+                    setTimeout(()=>[261.63, 329.63, 392, 493.88].forEach(f=>this.playClassical(f, 'triangle', 1.5, 0.05, 0, true)), 800);
+                    return;
+                }
+                if (s === 'chinese') {
+                    const notes = [392, 440, 523.25, 587.33, 659.25, 783.99, 880];
+                    notes.forEach((freq, i) => setTimeout(() => this.playClassical(freq, 'sine', 0.4, 0.03, 0, true, 0.02), i * 120));
+                    return;
+                }
+                if (s === 'lofi') {
+                    [261.63, 329.63, 392, 493.88].forEach(f=>this.playClassical(f, 'sine', 1.0, 0.02, -0.2, true, 0.2));
+                    setTimeout(()=>[174.61, 261.63, 329.63, 440].forEach(f=>this.playClassical(f, 'sine', 1.0, 0.02, 0.2, true, 0.2)), 600);
+                    setTimeout(()=>[261.63, 329.63, 392, 493.88, 523.25].forEach(f=>this.playClassical(f, 'sine', 2.0, 0.02, 0, true, 0.3)), 1200);
+                    return;
+                }
+                // classic
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    const pan = -0.6 + (1.2 * (i / (notes.length - 1))); 
+                    setTimeout(() => {
+                        this.playClassical(freq, 'triangle', 1.2, 0.06, pan, true, 0.05);
+                        if (i % 2 === 0) this.playClassical(freq / 2, 'sine', 1.5, 0.04, pan, false, 0.1);
+                    }, i * 90);
+                });
+            }
+        };
+
+        // --- Translations ---
+        const T = {
+            zh: {
+                lobbyTitle: "开始游戏", lobbySub: "选择对手 (1-9位)", btnEnter: "坐下 ENTER",
+                rules: "初始筹码: 5000 | 盲注: 20/20 | 限注: 200",
+                pot: "底池 POT", winProb: "胜率", community: "公共牌",
+                btnFold: "弃牌 FOLD", btnCall: "跟注 CALL", btnCheck: "让牌 CHECK", btnRaise: "加注 RAISE", btnNext: "下一局 NEXT",
+                btnLobby: "返回大厅", confirmReturn: "确定要返回大厅吗？\n当前进度将丢失。",
+                btnCancel: "取消 CANCEL", btnConfirm: "确定 CONFIRM",
+                stage0: "翻牌前", stage1: "翻牌", stage2: "转牌", stage3: "河牌", stage4: "摊牌",
+                logNewHand: "新局开始. 盲注已下.",
+                logFold: "{name} 弃牌.", logCheck: "{name} 让牌.", logCall: "{name} 跟注 {amt}.", logRaise: "{name} 加注 {amt}.",
+                logFlop: ">>> 翻牌 (Flop)", logTurn: ">>> 转牌 (Turn)", logRiver: ">>> 河牌 (River)",
+                logEarlyWin: "{name} 获胜赢取 {pot} (其余弃牌).", logShowdown: "摊牌! {names} 赢得 {pot}. [{hand}]",
+                ranks: ['高牌 High Card', '一对 Pair', '两对 Two Pair', '三条 Three of a Kind', '顺子 Straight', '同花 Flush', '葫芦 Full House', '四条 Four of a Kind', '同花顺 Straight Flush'],
+                oddsOn: '胜率 ON', oddsOff: '胜率 OFF',
+                saveData: "存档", saveTitle: "游戏存档 ARCHIVES", slotEmpty: "- 空槽位 EMPTY -",
+                btnSaveSlot: "保存 SAVE", btnLoadSlot: "读取 LOAD",
+                msgMustInGame: "请在进入对局后再进行保存。", msgLoadConfirm: "确定要读取此存档吗？当前进度将被覆盖。",
+                msgSaveConfirm: "确定要覆盖此槽位的存档吗？",
+                btnExport: "↓ 导出存档 (Export JSON)", btnImport: "↑ 导入存档 (Import JSON)",
+                msgImportSuccess: "存档导入成功！", msgImportFail: "导入失败：文件格式不正确或损坏。"
+            },
+            en: {
+                lobbyTitle: "Start Game", lobbySub: "Select Opponents (1-9)", btnEnter: "ENTER TABLE",
+                rules: "Stack: 5000 | Blinds: 20/20 | Max Bet: 200",
+                pot: "TOTAL POT", winProb: "WIN PROB", community: "COMMUNITY CARDS",
+                btnFold: "FOLD", btnCall: "CALL", btnCheck: "CHECK", btnRaise: "RAISE", btnNext: "NEXT HAND",
+                btnLobby: "LOBBY", confirmReturn: "Return to lobby?\nCurrent game will be lost.",
+                btnCancel: "CANCEL", btnConfirm: "CONFIRM",
+                stage0: "PREFLOP", stage1: "FLOP", stage2: "TURN", stage3: "RIVER", stage4: "SHOWDOWN",
+                logNewHand: "New hand. Blinds posted.",
+                logFold: "{name} folds.", logCheck: "{name} checks.", logCall: "{name} calls {amt}.", logRaise: "{name} raises {amt}.",
+                logFlop: ">>> Flop", logTurn: ">>> Turn", logRiver: ">>> River",
+                logEarlyWin: "{name} wins {pot} (Others folded).", logShowdown: "Showdown! {names} wins {pot}. [{hand}]",
+                ranks: ['High Card', 'Pair', 'Two Pair', 'Three of a Kind', 'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush'],
+                oddsOn: 'ODDS ON', oddsOff: 'ODDS OFF',
+                saveData: "DATA", saveTitle: "GAME ARCHIVES", slotEmpty: "- EMPTY SLOT -",
+                btnSaveSlot: "SAVE", btnLoadSlot: "LOAD",
+                msgMustInGame: "Please enter a game before saving.", msgLoadConfirm: "Load this save? Current progress will be lost.",
+                msgSaveConfirm: "Overwrite this save slot?",
+                btnExport: "↓ Export JSON", btnImport: "↑ Import JSON",
+                msgImportSuccess: "Saves imported successfully!", msgImportFail: "Import failed: Invalid format or corrupted file."
+            },
+            ja: {
+                lobbyTitle: "ゲーム開始", lobbySub: "対戦相手を選択 (1-9人)", btnEnter: "参加する",
+                rules: "初期チップ: 5000 | ブラインド: 20/20 | 上限: 200",
+                pot: "ポット", winProb: "勝率", community: "コミュニティ",
+                btnFold: "フォールド", btnCall: "コール", btnCheck: "チェック", btnRaise: "レイズ", btnNext: "次のゲーム",
+                btnLobby: "ロビーへ", confirmReturn: "ロビーに戻りますか？\n現在の進行は失われます。",
+                btnCancel: "キャンセル", btnConfirm: "確認",
+                stage0: "プリフロップ", stage1: "フロップ", stage2: "ターン", stage3: "リバー", stage4: "ショーダウン",
+                logNewHand: "新しいゲーム。ブラインドが置かれました。",
+                logFold: "{name} フォールド。", logCheck: "{name} チェック。", logCall: "{name} コール {amt}。", logRaise: "{name} レイズ {amt}。",
+                logFlop: ">>> フロップ", logTurn: ">>> ターン", logRiver: ">>> リバー",
+                logEarlyWin: "{name} が {pot} を获得 (他フォールド)。", logShowdown: "ショーダウン! {names} が {pot} 获得。[{hand}]",
+                ranks: ['ハイカード', 'ワンペア', 'ツーペア', 'スリーカード', 'ストレート', 'フラッシュ', 'フルハウス', 'フォーカード', 'ストレートフラッシュ'],
+                oddsOn: '勝率 ON', oddsOff: '勝率 OFF',
+                saveData: "データ", saveTitle: "セーブデータ ARCHIVES", slotEmpty: "- 空きスロット -",
+                btnSaveSlot: "セーブ", btnLoadSlot: "ロード",
+                msgMustInGame: "ゲームに参加してからセーブしてください。", msgLoadConfirm: "このデータをロードしますか？現在の進行は失われます。",
+                msgSaveConfirm: "このスロットに上書き保存しますか？",
+                btnExport: "↓ セーブ出力 (Export)", btnImport: "↑ セーブ読込 (Import)",
+                msgImportSuccess: "インポート成功！", msgImportFail: "インポート失敗：無効な形式。"
+            }
+        };
+
+        const t = (key, params = {}) => {
+            let str = T[app.lang][key] || key;
+            for (let p in params) str = str.replace(`{${p}}`, params[p]);
+            return str;
+        };
+
+        const SUITS = ['s', 'h', 'c', 'd'];
+        const RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        const SUIT_SYMBOLS = { s: '♠', h: '♥', c: '♣', d: '♦' };
+        const FULL_DECK_REF = [];
+        RANKS.forEach(r => SUITS.forEach(s => FULL_DECK_REF.push({ r, s })));
+
+        const createDeck = () => {
+            const deck = [...FULL_DECK_REF];
+            for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+            return deck;
+        };
+
+        const evaluate7 = (cards) => {
+            if (cards.length < 5) return 0;
+            const ranks = new Array(15).fill(0); const suits = { s: [], h: [], c: [], d: [] };
+            for(let i=0; i<cards.length; i++) { ranks[cards[i].r]++; suits[cards[i].s].push(cards[i]); }
+            let flushCards = null;
+            for (const s of SUITS) { if (suits[s].length >= 5) { flushCards = suits[s].sort((a, b) => b.r - a.r); break; } }
+            const getStraightRank = (uniqueRanks) => {
+                if (uniqueRanks.length < 5) return 0;
+                if (uniqueRanks.includes(14) && uniqueRanks.includes(5) && uniqueRanks.includes(4) && uniqueRanks.includes(3) && uniqueRanks.includes(2)) {
+                    for (let i = 0; i <= uniqueRanks.length - 5; i++) { if (uniqueRanks[i] - uniqueRanks[i + 4] === 4) return uniqueRanks[i]; }
+                    return 5; 
+                }
+                for (let i = 0; i <= uniqueRanks.length - 5; i++) { if (uniqueRanks[i] - uniqueRanks[i + 4] === 4) return uniqueRanks[i]; }
+                return 0;
+            };
+            if (flushCards) { const sfRank = getStraightRank([...new Set(flushCards.map(c => c.r))]); if (sfRank > 0) return (8 << 20) | (sfRank << 16); }
+            const quads = [], trips = [], pairs = [], singles = [];
+            for (let i = 14; i >= 2; i--) { if (ranks[i] === 4) quads.push(i); else if (ranks[i] === 3) trips.push(i); else if (ranks[i] === 2) pairs.push(i); else if (ranks[i] === 1) singles.push(i); }
+            if (quads.length > 0) { const kicker = [...trips, ...pairs, ...singles].sort((a,b)=>b-a)[0]||0; return (7 << 20) | (quads[0] << 16) | (kicker << 12); }
+            if (trips.length > 0 && pairs.length > 0) return (6 << 20) | (trips[0] << 16) | (pairs[0] << 12);
+            if (trips.length > 1) return (6 << 20) | (trips[0] << 16) | (trips[1] << 12);
+            if (flushCards) return (5 << 20) | (flushCards[0].r << 16) | (flushCards[1].r << 12) | (flushCards[2].r << 8) | (flushCards[3].r << 4) | flushCards[4].r;
+            const sortedUniqueRanks = [...new Set(cards.map(c => c.r))].sort((a,b)=>b-a);
+            const straightRank = getStraightRank(sortedUniqueRanks);
+            if (straightRank > 0) return (4 << 20) | (straightRank << 16);
+            if (trips.length > 0) { const kickers = [...pairs, ...singles].sort((a,b)=>b-a); return (3 << 20) | (trips[0] << 16) | ((kickers[0]||0) << 12) | ((kickers[1]||0) << 8); }
+            if (pairs.length > 1) { const kicker = [...singles, pairs.length > 2 ? pairs[2] : 0].sort((a,b)=>b-a)[0]||0; return (2 << 20) | (pairs[0] << 16) | (pairs[1] << 12) | (kicker << 8); }
+            if (pairs.length === 1) { const kickers = singles.sort((a,b)=>b-a); return (1 << 20) | (pairs[0] << 16) | ((kickers[0]||0) << 12) | ((kickers[1]||0) << 8) | ((kickers[2]||0) << 4); }
+            return (0 << 20) | ((sortedUniqueRanks[0]||0) << 16) | ((sortedUniqueRanks[1]||0) << 12) | ((sortedUniqueRanks[2]||0) << 8) | ((sortedUniqueRanks[3]||0) << 4) | (sortedUniqueRanks[4]||0);
+        };
+
+        const getBestHandInfo = (cards) => {
+            const score = evaluate7(cards);
+            const sortedCards = [...cards].sort((a,b)=>b.r-a.r);
+            const type = score >> 20;
+            let best5 = [];
+            const ranksCount = {}; sortedCards.forEach(c => ranksCount[c.r] = (ranksCount[c.r] || 0) + 1);
+            const quads = Object.keys(ranksCount).filter(r => ranksCount[r] === 4).map(Number);
+            const trips = Object.keys(ranksCount).filter(r => ranksCount[r] === 3).map(Number).sort((a,b)=>b-a);
+            const pairs = Object.keys(ranksCount).filter(r => ranksCount[r] === 2).map(Number).sort((a,b)=>b-a);
+            const suits = { s: [], h: [], c: [], d: [] }; sortedCards.forEach(c => suits[c.s].push(c));
+            let flushCards = Object.values(suits).find(arr => arr.length >= 5); if (flushCards) flushCards.sort((a,b)=>b.r-a.r);
+            const getStraightCards = (cList) => {
+                let uRanks = [...new Set(cList.map(c=>c.r))];
+                if (uRanks.includes(14) && uRanks.includes(5) && uRanks.includes(4) && uRanks.includes(3) && uRanks.includes(2)) {
+                    for (let i = 0; i <= uRanks.length - 5; i++) { if (uRanks[i] - uRanks[i+4] === 4) { let hr = uRanks[i]; return [hr, hr-1, hr-2, hr-3, hr-4].map(r => cList.find(c=>c.r===r)); } }
+                    return [5,4,3,2,14].map(r => cList.find(c=>c.r===r));
+                }
+                for (let i = 0; i <= uRanks.length - 5; i++) { if (uRanks[i] - uRanks[i+4] === 4) { let hr = uRanks[i]; return [hr, hr-1, hr-2, hr-3, hr-4].map(r => cList.find(c=>c.r===r)); } }
+                return null;
+            }
+            if (type === 8) best5 = getStraightCards(flushCards);
+            else if (type === 7) { const q = sortedCards.filter(c=>c.r===quads[0]); const k = sortedCards.filter(c=>c.r!==quads[0]).slice(0,1); best5 = [...q, ...k]; }
+            else if (type === 6) { const t = sortedCards.filter(c=>c.r===trips[0]).slice(0,3); const pRank = trips.length > 1 ? trips[1] : pairs[0]; const p = sortedCards.filter(c=>c.r===pRank).slice(0,2); best5 = [...t, ...p]; }
+            else if (type === 5) best5 = flushCards.slice(0,5);
+            else if (type === 4) best5 = getStraightCards(sortedCards);
+            else if (type === 3) { const t = sortedCards.filter(c=>c.r===trips[0]).slice(0,3); const k = sortedCards.filter(c=>c.r!==trips[0]).slice(0,2); best5 = [...t, ...k]; }
+            else if (type === 2) { const p1 = sortedCards.filter(c=>c.r===pairs[0]).slice(0,2); const p2 = sortedCards.filter(c=>c.r===pairs[1]).slice(0,2); const k = sortedCards.filter(c=>c.r!==pairs[0] && c.r!==pairs[1]).slice(0,1); best5 = [...p1, ...p2, ...k]; }
+            else if (type === 1) { const p1 = sortedCards.filter(c=>c.r===pairs[0]).slice(0,2); const k = sortedCards.filter(c=>c.r!==pairs[0]).slice(0,3); best5 = [...p1, ...k]; }
+            else best5 = sortedCards.slice(0,5);
+            return { score, best5 };
+        }
+
+        const formatRank = (r) => { if (r === 11) return 'J'; if (r === 12) return 'Q'; if (r === 13) return 'K'; if (r === 14) return 'A'; return r.toString(); };
+
+        const calculateOdds = (humanCards, communityCards, numActivePlayers) => {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const iterations = 3000; let wins = 0; let ties = 0; const knownCards = new Set(); humanCards.forEach(c => knownCards.add(`${c.r}-${c.s}`)); communityCards.forEach(c => knownCards.add(`${c.r}-${c.s}`)); const availableDeck = FULL_DECK_REF.filter(c => !knownCards.has(`${c.r}-${c.s}`)); if (numActivePlayers <= 1) { resolve(100.0); return; }
+                    for (let i = 0; i < iterations; i++) {
+                        let deck = [...availableDeck]; for (let j = deck.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [deck[j], deck[k]] = [deck[k], deck[j]]; }
+                        let deckIdx = 0; let simCom = [...communityCards]; for(let c=simCom.length; c<5; c++) simCom.push(deck[deckIdx++]);
+                        let myScore = evaluate7([...simCom, ...humanCards]); let isWin = true; let isTie = false;
+                        for (let p = 1; p < numActivePlayers; p++) { const oppCards = [deck[deckIdx++], deck[deckIdx++]]; const oppScore = evaluate7([...simCom, ...oppCards]); if (oppScore > myScore) { isWin = false; break; } else if (oppScore === myScore) { isWin = false; isTie = true; } }
+                        if (isWin) wins++; else if (isTie) ties++;
+                    }
+                    resolve(((wins + (ties/2)) / iterations) * 100);
+                }, 0);
+            });
+        };
+
+        const AI_PROFILES = [
+            { name: '亮氏', icon: '🧠', pL: 0.6, pA: 0.8, bluff: 0.5, chase: false, size: 'normal' },
+            { name: '豹子', icon: '🐆', pL: 0.4, pA: 0.9, bluff: 0.1, chase: true, size: 'max' },
+            { name: '华仔', icon: '🕶️', pL: 0.5, pA: 0.5, bluff: 0.3, chase: true, size: 'random' },
+            { name: '大雄', icon: '🤓', pL: 0.3, pA: 0.8, bluff: 0.0, chase: false, size: 'normal' },
+            { name: '冰冰', icon: '❄️', pL: 0.15, pA: 1.0, bluff: 0.0, chase: false, size: 'max' },
+            { name: '老铁', icon: '🍺', pL: 0.25, pA: 0.6, bluff: 0.1, chase: false, size: 'normal' },
+            { name: '太子', icon: '👑', pL: 0.8, pA: 0.9, bluff: 0.6, chase: true, size: 'max' },
+            { name: '斌哥', icon: '☕', pL: 0.1, pA: 0.5, bluff: 0.0, chase: false, size: 'min' },
+            { name: '鹤顶红', icon: '🍷', pL: 0.3, pA: 0.8, bluff: 0.2, chase: true, size: 'normal' },
+            { name: '云哥', icon: '☁️', pL: 0.3, pA: 0.5, bluff: 0.1, chase: false, size: 'normal' }
+        ];
+
+        const app = {
+            theme: 'light', lang: 'zh', selectedAIs: [], pendingConfirmAction: null, showOdds: false,
+            soundStyleNames: { classic: '古典', anime: '动漫', flow: '心流', rock: '摇滚', rnb: 'R&B', jazz: 'Jazz', chinese: '国风', lofi: 'Lo-Fi' },
+            themesData: [
+                // Light themes (8)
+                {id: 'light', color: '#ffffff'}, {id: 'light-gray', color: '#dfe1e5'}, {id: 'champagne', color: '#D9CBB8'}, {id: 'light-mid-yellow', color: '#fde68a'},
+                {id: 'light-grass', color: '#9cb878'}, {id: 'light-lake', color: '#add8e6'}, {id: 'light-hermes', color: '#fdba74'}, {id: 'light-pink', color: '#f8bbd0'},
+                // Dark themes (8)
+                {id: 'dark', color: '#111111'}, {id: 'dark-gray', color: '#444444'}, {id: 'dark-orange', color: '#e56b1f'}, {id: 'dark-crimson', color: '#9f1239'},
+                {id: 'green', color: '#124d26'}, {id: 'dark-lake', color: '#1b263b'}, {id: 'dark-purple', color: '#4c1d95'}, {id: 'dark-pink', color: '#4a2c4d'}
+            ],
+            init() { 
+                saveManager.init();
+                this.updateTheme(); 
+                this.updateUIStrings(); 
+                this.renderLobby(); 
+                this.renderPanels();
+                window.addEventListener('click', () => this.closePanels());
+            },
+            closePanels() {
+                document.getElementById('sound-panel')?.classList.add('hidden');
+                document.getElementById('theme-panel')?.classList.add('hidden');
+            },
+            toggleSoundPanel(e) { 
+                e.stopPropagation(); 
+                document.getElementById('theme-panel').classList.add('hidden'); 
+                document.getElementById('sound-panel').classList.toggle('hidden'); 
+            },
+            toggleThemePanel(e) { 
+                e.stopPropagation(); 
+                document.getElementById('sound-panel').classList.add('hidden'); 
+                document.getElementById('theme-panel').classList.toggle('hidden'); 
+            },
+            closeSavePanel(e) {
+                if (e && e.target.id !== 'save-modal') return;
+                document.getElementById('save-modal').classList.add('hidden');
+            },
+            toggleSavePanel() {
+                const p = document.getElementById('save-modal');
+                if (p.classList.contains('hidden')) {
+                    saveManager.renderSlots();
+                    p.classList.remove('hidden');
+                } else {
+                    p.classList.add('hidden');
+                }
+            },
+            setSoundStyle(id) { 
+                soundManager.style = id; 
+                if (!soundManager.enabled) {
+                    soundManager.enabled = true;
+                    soundManager.init();
+                    if(soundManager.ctx && soundManager.ctx.state === 'suspended') soundManager.ctx.resume();
+                }
+                this.renderPanels(); 
+                this.closePanels();
+                soundManager.playAction('call'); 
+            },
+            toggleSound() { 
+                soundManager.toggle(); 
+                this.renderPanels(); 
+            },
+            renderPanels() {
+                const sPanel = document.getElementById('sound-panel');
+                if (sPanel) {
+                    sPanel.innerHTML = `
+                        <button onclick="app.toggleSound(); event.stopPropagation();" class="w-full text-left px-2 py-1.5 text-[9px] hover:bg-gray-100 dark:hover:bg-gray-800 ${!soundManager.enabled?'text-red-500':'text-gray-500'} font-bold border-b border-gray-200 dark:border-gray-700 transition-colors uppercase tracking-widest">${soundManager.enabled?'■ 停用 OFF':'▶ 启用 ON'}</button>
+                        ${Object.keys(this.soundStyleNames).map(k => `<button onclick="app.setSoundStyle('${k}'); event.stopPropagation();" class="w-full text-left px-2 py-1.5 text-[9px] hover:bg-gray-100 dark:hover:bg-gray-800 ${soundManager.style===k&&soundManager.enabled?'bg-gray-100 dark:bg-gray-800 font-bold':''} transition-colors tracking-widest">${this.soundStyleNames[k]}</button>`).join('')}
+                    `;
+                }
+                
+                const tPanel = document.getElementById('theme-panel');
+                if (tPanel) {
+                    tPanel.innerHTML = this.themesData.map(t => `<button onclick="app.setTheme('${t.id}'); event.stopPropagation();" class="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[1.5px] ${this.theme===t.id?'border-blue-500 scale-125 shadow-md':'border-gray-300 dark:border-gray-600 hover:scale-110 transition-transform'}" style="background-color: ${t.color};" title="${t.id}"></button>`).join('');
+                }
+
+                const btn = document.getElementById('txt-btn-sound');
+                if(!soundManager.enabled) btn.innerText = '🔇 OFF';
+                else btn.innerText = '🎵 ' + this.soundStyleNames[soundManager.style].substring(0,3).toUpperCase();
+            },
+            setTheme(id) { 
+                this.theme = id; 
+                this.updateTheme(); 
+                this.closePanels(); 
+            },
+            updateTheme() {
+                document.documentElement.classList.remove('dark', 'theme-champagne', 'theme-green', 'theme-dark-gray', 'theme-light-gray', 'theme-dark-pink', 'theme-light-pink', 'theme-dark-lake', 'theme-light-lake', 'theme-dark-orange', 'theme-light-grass', 'theme-dark-purple', 'theme-dark-crimson', 'theme-light-mid-yellow', 'theme-light-hermes');
+                
+                if (this.theme === 'dark' || this.theme.startsWith('dark-') || this.theme === 'green') {
+                    document.documentElement.classList.add('dark');
+                }
+                
+                if (this.theme !== 'light' && this.theme !== 'dark') {
+                    document.documentElement.classList.add('theme-' + this.theme);
+                }
+                
+                this.renderPanels();
+            },
+            toggleLang() { const langs = ['zh', 'en', 'ja']; this.lang = langs[(langs.indexOf(this.lang) + 1) % langs.length]; document.getElementById('lang-display').innerText = this.lang.toUpperCase(); this.updateUIStrings(); if(game.state.players.length > 0) game.render(); },
+            toggleOdds() { this.showOdds = !this.showOdds; if(game.isActive) game.render(); },
+            updateUIStrings() {
+                document.getElementById('txt-lobby-title').innerText = t('lobbyTitle'); document.getElementById('txt-lobby-subtitle').innerText = t('lobbySub'); document.getElementById('txt-lobby-rules').innerText = t('rules'); document.getElementById('btn-enter').innerText = t('btnEnter');
+                const elBtnLobby = document.getElementById('txt-btn-lobby'); if (elBtnLobby) elBtnLobby.innerText = t('btnLobby').split(' ')[0];
+                if (game.state.stage < 4) { const elPot = document.getElementById('txt-pot-label'); if(elPot) elPot.innerText = t('pot'); }
+                document.getElementById('btn-fold').innerText = t('btnFold').split(' ')[0]; document.getElementById('btn-call').innerText = t('btnCall').split(' ')[0]; document.getElementById('btn-next').innerText = t('btnNext');
+                
+                document.getElementById('txt-btn-save').innerText = t('saveData');
+                if(document.getElementById('save-title')) document.getElementById('save-title').innerText = t('saveTitle');
+                if(document.getElementById('btn-save-action')) document.getElementById('btn-save-action').innerText = t('btnSaveSlot');
+                if(document.getElementById('btn-load-action')) document.getElementById('btn-load-action').innerText = t('btnLoadSlot');
+                if(document.getElementById('btn-export-action')) document.getElementById('btn-export-action').innerText = t('btnExport');
+                if(document.getElementById('btn-import-action')) document.getElementById('btn-import-action').innerText = t('btnImport');
+                saveManager.renderSlots();
+            },
+            randomizeAIs() { const num = Math.floor(Math.random() * 9) + 1; const shuffled = [...AI_PROFILES].sort(() => 0.5 - Math.random()); this.selectedAIs = shuffled.slice(0, num).map(ai => ai.name); this.renderLobby(); },
+            renderLobby() {
+                const container = document.getElementById('lobby-player-btns'); let html = '';
+                const baseClass = "flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-1 sm:px-2 rounded-md font-mono text-xs transition-all duration-200 border-[1px] outline-none";
+                const activeClass = "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-lg font-bold scale-[1.02] z-10";
+                const inactiveClass = "bg-transparent text-gray-500 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:text-black dark:hover:text-white";
+                AI_PROFILES.forEach((ai) => { const isActive = this.selectedAIs.includes(ai.name); const c = isActive ? `${baseClass} ${activeClass}` : `${baseClass} ${inactiveClass}`; html += `<button onclick="app.toggleAI('${ai.name}')" class="${c}"><span class="text-[10px] sm:text-sm shrink-0">${ai.icon}</span><span class="truncate tracking-widest text-[10px] sm:text-xs">${ai.name}</span></button>`; });
+                container.innerHTML = html;
+                const btnEnter = document.getElementById('btn-enter'); if (btnEnter) { if (this.selectedAIs.length === 0) { btnEnter.disabled = true; btnEnter.classList.add('opacity-30', 'cursor-not-allowed'); } else { btnEnter.disabled = false; btnEnter.classList.remove('opacity-30', 'cursor-not-allowed'); } }
+            },
+            toggleAI(name) { if (this.selectedAIs.includes(name)) this.selectedAIs = this.selectedAIs.filter(n => n !== name); else if (this.selectedAIs.length < 9) this.selectedAIs.push(name); this.renderLobby(); },
+            startGame() { 
+                if(this.selectedAIs.length === 0) return; 
+                if (soundManager.enabled) soundManager.init();
+                document.getElementById('lobby-view').style.opacity = '0'; 
+                setTimeout(() => { 
+                    document.getElementById('lobby-view').style.display = 'none'; 
+                    document.getElementById('btn-return-lobby').classList.remove('hidden');
+                    document.getElementById('btn-return-lobby').classList.add('flex');
+                    const gameView = document.getElementById('game-view'); 
+                    gameView.style.display = 'flex'; 
+                    gameView.style.opacity = '0'; 
+                    setTimeout(() => { gameView.style.opacity = '1'; game.init([...this.selectedAIs]); }, 50); 
+                }, 300); 
+            },
+            showConfirm(msg, callback) { document.getElementById('confirm-msg').innerText = msg; document.getElementById('btn-confirm-cancel').innerText = t('btnCancel'); document.getElementById('btn-confirm-ok').innerText = t('btnConfirm'); this.pendingConfirmAction = callback; document.getElementById('custom-confirm').classList.remove('hidden'); },
+            cancelConfirm() { 
+                this.pendingConfirmAction = null; 
+                document.getElementById('custom-confirm').classList.add('hidden'); 
+                const cancelBtn = document.getElementById('btn-confirm-cancel');
+                if (cancelBtn) cancelBtn.classList.remove('hidden');
+            },
+            executeConfirm() { if (this.pendingConfirmAction) this.pendingConfirmAction(); this.cancelConfirm(); },
+            returnToLobbyDirect() { 
+                game.isActive = false; 
+                document.getElementById('game-view').style.opacity = '0'; 
+                setTimeout(() => { 
+                    document.getElementById('game-view').style.display = 'none'; 
+                    document.getElementById('ui-stage-text').innerText = 'LOBBY'; 
+                    document.getElementById('btn-return-lobby').classList.add('hidden');
+                    document.getElementById('btn-return-lobby').classList.remove('flex');
+                    const lobbyView = document.getElementById('lobby-view'); 
+                    lobbyView.style.display = 'flex'; 
+                    setTimeout(() => { lobbyView.style.opacity = '1'; }, 50); 
+                }, 300); 
+            },
+            returnToLobby() { 
+                this.showConfirm(t('confirmReturn'), () => { 
+                    this.returnToLobbyDirect();
+                }); 
+            },
+            showGameOver(msg) {
+                document.getElementById('confirm-msg').innerText = msg;
+                const cancelBtn = document.getElementById('btn-confirm-cancel');
+                const okBtn = document.getElementById('btn-confirm-ok');
+                cancelBtn.classList.add('hidden');
+                okBtn.innerText = t('btnLobby').split(' ')[0];
+                this.pendingConfirmAction = () => { this.returnToLobbyDirect(); };
+                document.getElementById('custom-confirm').classList.remove('hidden');
+            }
+        };
+
+        const game = {
+            isActive: false, 
+            state: { deck: [], communityCards: [], pot: 0, stage: 0, players: [], dealerIndex: 0, turnIndex: 0, currentBet: 0, lastActionIndex: -1, maxBetPerRound: 200, raiseInputVal: 20, log: "", myOdds: null, winningCardKeys: new Set(), winners: [], winningHandIdx: 0 },
+            init(selectedAINames) { this.isActive = true; this.state.players = [{ id: 0, name: 'YOU', chips: 5000, bet: 0, roundBet: 0, cards: [], folded: false, isBot: false, hasRaisedThisRound: false, profile: null, rebuyCount: 0 }]; selectedAINames.forEach((name, idx) => { const aiProfile = AI_PROFILES.find(p => p.name === name); if (aiProfile) this.state.players.push({ id: idx + 1, name: aiProfile.name, profile: aiProfile, chips: 5000, bet: 0, roundBet: 0, cards: [], folded: false, isBot: true, hasRaisedThisRound: false, rebuyCount: 0 }); }); this.startHand(); },
+            log(msg) { this.state.log = msg; document.getElementById('game-log').innerText = msg; },
+            startHand() {
+                if (!this.isActive) return; const s = this.state; 
+
+                if (s.players[0].chips <= 0) { 
+                    app.showGameOver(app.lang === 'zh' ? "Game Over\n你的筹码已输光！" : (app.lang === 'en' ? "Game Over\nYou lost all your chips!" : "Game Over\nチップをすべて失いました！")); 
+                    return; 
+                }
+                const activeBots = s.players.filter(p => p.id !== 0 && p.chips > 0);
+                if (activeBots.length === 0) { 
+                    app.showGameOver(app.lang === 'zh' ? "Game Win\n所有对手已退出游戏！" : (app.lang === 'en' ? "Game Win\nAll opponents are out!" : "Game Win\nすべての対戦相手が退出しました！")); 
+                    return; 
+                }
+
+                let nextDealerIdx = (s.dealerIndex + 1) % s.players.length;
+                while (s.players[nextDealerIdx].chips <= 0) { nextDealerIdx = (nextDealerIdx + 1) % s.players.length; }
+                const nextDealerId = s.players[nextDealerIdx].id;
+
+                s.players = s.players.filter(p => p.chips > 0);
+                s.dealerIndex = s.players.findIndex(p => p.id === nextDealerId);
+                if(s.dealerIndex === -1) s.dealerIndex = 0;
+
+                s.deck = createDeck(); s.communityCards = []; s.pot = 0; s.stage = 0; s.currentBet = 0; s.myOdds = null; s.winningCardKeys.clear(); s.winners = []; s.winningHandIdx = 0; s.players.forEach(p => { p.cards = [s.deck.pop(), s.deck.pop()]; p.bet = 0; p.roundBet = 0; p.folded = false; p.status = ''; p.hasRaisedThisRound = false; });
+                const blindAmt = s.players.length === 2 ? 200 : (s.players.length === 3 ? 100 : (s.players.length === 4 ? 50 : 20)); const sbIndex = (s.dealerIndex + 1) % s.players.length; const bbIndex = (s.dealerIndex + 2) % s.players.length; this.deductBet(sbIndex, blindAmt); this.deductBet(bbIndex, blindAmt); if (s.players.length > 3) { s.players[sbIndex].hasRaisedThisRound = true; s.players[bbIndex].hasRaisedThisRound = true; } s.currentBet = blindAmt; s.turnIndex = (s.dealerIndex + 3) % s.players.length; s.lastActionIndex = bbIndex; this.log(t('logNewHand')); soundManager.playCard(); this.updateOdds(); this.render(); this.processTurn();
+            },
+            async updateOdds() { 
+                if (!this.isActive) return; 
+                const s = this.state; 
+                const me = s.players[0]; 
+                const activeCount = s.players.filter(p => !p.folded).length; 
+                s.myOdds = '...'; 
+                this.render(); 
+                s.myOdds = await calculateOdds(me.cards, s.communityCards, me.folded ? activeCount + 1 : activeCount); 
+                if (this.isActive) this.render(); 
+            },
+            deductBet(playerIdx, amount) { const s = this.state; const p = s.players[playerIdx]; const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); const allowedByRules = maxBet - p.roundBet; let actual = Math.min(amount, p.chips, allowedByRules); if (actual < 0) actual = 0; p.chips -= actual; p.bet += actual; p.roundBet += actual; s.pot += actual; if (p.roundBet > s.currentBet) s.currentBet = p.roundBet; return actual; },
+            getUnfoldedCount() { return this.state.players.filter(p => !p.folded).length; },
+            processTurn() {
+                if (!this.isActive) return; const s = this.state; if (s.stage === 4) return; if (this.getUnfoldedCount() === 1) { this.endHandEarly(); return; } 
+                const activeWithChips = s.players.filter(p => !p.folded && p.chips > 0);
+                const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); let needsAction = s.players.filter(p => !p.folded && p.chips > 0 && p.roundBet < maxBet && (p.status === '' || p.roundBet < s.currentBet));
+                if (activeWithChips.length <= 1) needsAction = needsAction.filter(p => p.roundBet < s.currentBet);
+                if (needsAction.length === 0) { this.nextStage(); return; }
+                const currentP = s.players[s.turnIndex]; 
+                if (!needsAction.includes(currentP)) { s.turnIndex = (s.turnIndex + 1) % s.players.length; this.processTurn(); return; } 
+                this.render(); if (currentP.isBot) setTimeout(() => { if(this.isActive) this.executeBotAI(currentP); }, 500 + Math.random()*500); else this.updateHumanControls(currentP);
+            },
+            executeBotAI(bot) {
+                if (!this.isActive) return; const s = this.state; const toCall = s.currentBet - bot.roundBet; let action = 'fold'; let raiseAmt = 0; const rand = Math.random(); let handStr = 0; if (s.stage > 0) handStr = evaluate7([...bot.cards, ...s.communityCards]) >> 20; let dL = bot.profile.pL; let dA = bot.profile.pA; let dB = bot.profile.bluff; let bSize = bot.profile.size; if (bot.profile.name === '云哥') { if (bot.chips > 5000) { dL = 0.5; dA = 0.7; } else { dL = 0.15; dA = 0.3; } } else if (bot.profile.name === '华仔') { dL = Math.random(); dA = Math.random(); dB = Math.random() * 0.5; }
+                const blindAmt = s.players.length === 2 ? 200 : (s.players.length === 3 ? 100 : (s.players.length === 4 ? 50 : 20)); if (s.stage === 0) { let pfScore = 0; const c1 = bot.cards[0].r; const c2 = bot.cards[1].r; if (c1 === c2) pfScore = 80 + c1; else if (c1 >= 10 && c2 >= 10) pfScore = 70 + Math.max(c1, c2); else if (Math.max(c1, c2) >= 11) pfScore = 50 + Math.max(c1, c2); else if (bot.cards[0].s === bot.cards[1].s) pfScore = 40 + Math.max(c1, c2); else pfScore = Math.max(c1, c2); const threshold = (1 - dL) * 80; if (pfScore >= threshold) { if (pfScore > 75 && rand < dA && toCall <= blindAmt * 2) action = 'raise'; else action = 'call'; } else { if (rand < dB) action = 'raise'; else if (toCall <= blindAmt && rand < dL) action = 'call'; else action = 'fold'; } }
+                else { if (handStr >= 2) action = rand < dA ? 'raise' : 'call'; else if (handStr === 1) { if (toCall > 60 && bot.profile.name === '斌哥') action = 'fold'; else action = rand < (dA * 0.5) ? 'raise' : 'call'; } else { if (rand < dB && toCall === 0) action = 'raise'; else if (rand < (dB * 0.5) && toCall > 0) action = 'raise'; else if (bot.profile.chase && toCall <= 60 && rand < 0.6) action = 'call'; else if (toCall === 0) action = 'call'; else action = 'fold'; } }
+                if (action === 'raise') { if (bot.hasRaisedThisRound) action = 'call'; else { const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); const maxAllowedToAdd = maxBet - bot.roundBet - toCall; if (maxAllowedToAdd <= 0 || bot.chips <= toCall) action = 'call'; else { let intendedRaise = blindAmt; const trapBet = () => Math.min(maxAllowedToAdd, 50 + Math.floor(Math.random() * 6) * 10); if (bSize === 'max') { if (Math.random() < 0.6 && maxAllowedToAdd >= 50) intendedRaise = trapBet(); else intendedRaise = maxAllowedToAdd; } else if (bSize === 'min') intendedRaise = 10; else if (bSize === 'random') { if (Math.random() < 0.3 && maxAllowedToAdd >= 50) intendedRaise = trapBet(); else intendedRaise = Math.random() * maxAllowedToAdd; } else { if (Math.random() < 0.2 && maxAllowedToAdd >= 50) intendedRaise = trapBet(); else intendedRaise = Math.min(maxAllowedToAdd, bot.chips / 4); } intendedRaise = Math.floor((intendedRaise)/10)*10; raiseAmt = Math.max(blindAmt, intendedRaise); } } }
+                if (action === 'call' && toCall > 0 && bot.chips <= toCall && bot.profile.name === '斌哥' && handStr === 0) action = 'fold';
+                this.applyAction(s.players.indexOf(bot), action, raiseAmt);
+            },
+            adjustRaise(delta) { 
+                const s = this.state; const p = s.players[0]; const toCall = s.currentBet - p.roundBet; 
+                const blindAmt = s.players.length === 2 ? 200 : (s.players.length === 3 ? 100 : (s.players.length === 4 ? 50 : 20)); let minR = toCall + blindAmt; const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); let maxR = Math.min(maxBet - p.roundBet, p.chips); 
+                s.raiseInputVal += delta; 
+                if(s.raiseInputVal < minR) s.raiseInputVal = minR; 
+                if(s.raiseInputVal > maxR) s.raiseInputVal = maxR; 
+                document.getElementById('raise-val').innerText = s.raiseInputVal; 
+                if(document.getElementById('btn-raise-sub100')) document.getElementById('btn-raise-sub100').disabled = (s.raiseInputVal <= minR);
+                document.getElementById('btn-raise-sub').disabled = (s.raiseInputVal <= minR); 
+                if(document.getElementById('btn-raise-sub50')) document.getElementById('btn-raise-sub50').disabled = (s.raiseInputVal <= minR);
+                document.getElementById('btn-raise-add').disabled = (s.raiseInputVal >= maxR); 
+                if(document.getElementById('btn-raise-add50')) document.getElementById('btn-raise-add50').disabled = (s.raiseInputVal >= maxR);
+                if(document.getElementById('btn-raise-add100')) document.getElementById('btn-raise-add100').disabled = (s.raiseInputVal >= maxR);
+                const btnMax = document.getElementById('btn-raise-max'); 
+                if (btnMax) btnMax.disabled = (s.raiseInputVal >= maxR); 
+            },
+            setMaxRaise() { 
+                const s = this.state; const p = s.players[0]; const toCall = s.currentBet - p.roundBet; 
+                const blindAmt = s.players.length === 2 ? 200 : (s.players.length === 3 ? 100 : (s.players.length === 4 ? 50 : 20)); let minR = toCall + blindAmt; const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); let maxR = Math.min(maxBet - p.roundBet, p.chips); 
+                if (maxR < minR) return; 
+                s.raiseInputVal = maxR; 
+                document.getElementById('raise-val').innerText = s.raiseInputVal; 
+                if(document.getElementById('btn-raise-sub100')) document.getElementById('btn-raise-sub100').disabled = (s.raiseInputVal <= minR);
+                document.getElementById('btn-raise-sub').disabled = (s.raiseInputVal <= minR); 
+                if(document.getElementById('btn-raise-sub50')) document.getElementById('btn-raise-sub50').disabled = (s.raiseInputVal <= minR);
+                document.getElementById('btn-raise-add').disabled = true; 
+                if(document.getElementById('btn-raise-add50')) document.getElementById('btn-raise-add50').disabled = true;
+                if(document.getElementById('btn-raise-add100')) document.getElementById('btn-raise-add100').disabled = true;
+                const btnMax = document.getElementById('btn-raise-max'); 
+                if (btnMax) btnMax.disabled = true; 
+            },
+            humanAction(type) { const s = this.state; if (s.players[s.turnIndex].id !== 0) return; let raiseAmt = 0; if (type === 'raise') { if (s.players[0].hasRaisedThisRound) return; raiseAmt = s.raiseInputVal - (s.currentBet - s.players[0].roundBet); } document.getElementById('action-bar').classList.add('opacity-50', 'pointer-events-none'); this.applyAction(0, type, raiseAmt); },
+            applyAction(playerId, type, raiseAmt = 0) {
+                if (!this.isActive) return; const s = this.state; const p = s.players[playerId]; const toCall = s.currentBet - p.roundBet;
+                if (type === 'fold') { p.folded = true; p.status = 'Fold'; this.log(t('logFold', {name: p.name})); soundManager.playAction('fold'); this.updateOdds(); } 
+                else if (type === 'call') { const actual = this.deductBet(playerId, toCall); p.status = toCall === 0 ? 'Check' : 'Call'; p.hasRaisedThisRound = true; if(toCall === 0) { this.log(t('logCheck', {name: p.name})); soundManager.playAction('check'); } else { this.log(t('logCall', {name: p.name, amt: actual})); soundManager.playAction('call'); } } 
+                else if (type === 'raise') { const actual = this.deductBet(playerId, toCall + raiseAmt); p.status = 'Raise'; p.hasRaisedThisRound = true; s.lastActionIndex = playerId; this.log(t('logRaise', {name: p.name, amt: raiseAmt})); soundManager.playAction('raise'); }
+                s.turnIndex = (s.turnIndex + 1) % s.players.length; this.processTurn();
+            },
+            nextStage() {
+                if (!this.isActive) return; const s = this.state; s.stage++; s.players.forEach(p => { p.bet = 0; p.roundBet = 0; p.status = ''; p.hasRaisedThisRound = false; }); s.currentBet = 0; s.turnIndex = (s.dealerIndex + 1) % s.players.length; while(s.players[s.turnIndex].folded || s.players[s.turnIndex].chips === 0) { s.turnIndex = (s.turnIndex + 1) % s.players.length; if (s.turnIndex === (s.dealerIndex + 1) % s.players.length) break; } s.lastActionIndex = (s.turnIndex === 0 ? s.players.length - 1 : s.turnIndex - 1); if (s.stage === 1) { s.communityCards.push(s.deck.pop(), s.deck.pop(), s.deck.pop()); this.log(t('logFlop')); soundManager.playCard(); } else if (s.stage === 2) { s.communityCards.push(s.deck.pop()); this.log(t('logTurn')); soundManager.playCard(); } else if (s.stage === 3) { s.communityCards.push(s.deck.pop()); this.log(t('logRiver')); soundManager.playCard(); } else if (s.stage === 4) { this.handleShowdown(); return; } this.updateOdds(); this.render(); setTimeout(() => { if (this.isActive) this.processTurn(); }, 600);
+            },
+            endHandEarly() { if (!this.isActive) return; const s = this.state; s.stage = 4; const winner = s.players.find(p => !p.folded); winner.chips += s.pot; s.winners = [winner]; s.winningHandIdx = -1; this.log(t('logEarlyWin', {name: winner.name, pot: s.pot})); soundManager.playWin(); this.renderShowdown(); },
+            handleShowdown() { if (!this.isActive) return; const s = this.state; const active = s.players.filter(p => !p.folded); let bestScore = -1; let winners = []; active.forEach(p => { const handInfo = getBestHandInfo([...p.cards, ...s.communityCards]); p.score = handInfo.score; p.best5 = handInfo.best5; if (p.score > bestScore) { bestScore = p.score; winners = [p]; } else if (p.score === bestScore) winners.push(p); }); const winAmount = Math.floor(s.pot / winners.length); winners.forEach(w => { w.chips += winAmount; }); s.winners = winners; s.winningHandIdx = bestScore >> 20; s.winningCardKeys.clear(); winners.forEach(w => { w.best5.forEach(c => s.winningCardKeys.add(`${c.r}-${c.s}`)); }); const winNames = winners.map(w => w.name).join(', '); const handName = T[app.lang].ranks[s.winningHandIdx] || T[app.lang].ranks[0]; this.log(t('logShowdown', {names: winNames, pot: winAmount, hand: handName})); soundManager.playWin(); this.renderShowdown(); },
+            render() {
+                if (!this.isActive) return; const s = this.state; document.getElementById('ui-stage-text').innerText = t('stage' + s.stage); const centerContainer = document.getElementById('center-board-container');
+                if (s.stage === 4) {
+                    let winnerRows = `<div class="flex flex-wrap justify-center gap-4 sm:gap-6 w-full mb-0.5">`; s.winners.forEach(w => { winnerRows += `<div class="flex flex-col items-center"><span class="text-[9px] sm:text-[10px] font-mono font-bold text-[#78350f] dark:text-[#facc15] mb-1">${w.name} (+${Math.floor(s.pot/s.winners.length)})</span><div class="flex justify-center -space-x-2">${this.renderCard(w.cards[0], true, s.winningCardKeys.has(`${w.cards[0].r}-${w.cards[0].s}`))} ${this.renderCard(w.cards[1], true, s.winningCardKeys.has(`${w.cards[1].r}-${w.cards[1].s}`))}</div></div>`; }); winnerRows += `</div>`;
+                    let commHTML = `<div class="flex justify-center gap-0.5 sm:gap-1 mt-1">`; for(let i=0; i<5; i++) { let c = s.communityCards[i]; commHTML += this.renderCard(c, true, c ? s.winningCardKeys.has(`${c.r}-${c.s}`) : false, 'large'); } commHTML += `</div>`;
+                    const handNameStr = s.winningHandIdx === -1 ? (app.lang === 'zh' ? '无人跟注获胜' : app.lang === 'en' ? 'WIN BY FOLD' : '他者フォールド') : (T[app.lang].ranks[s.winningHandIdx] || T[app.lang].ranks[0]);
+                    centerContainer.innerHTML = `<div class="w-full max-w-lg flex flex-col items-center gap-0.5 p-2 rounded-lg border-[1px] border-yellow-500/30 bg-yellow-500/5 dark:bg-yellow-500/10 shadow-lg relative pt-3 z-10 backdrop-blur-sm"><div class="absolute -top-2 px-2 bg-[#fafafa] dark:bg-[#0a0a0a] text-[8px] sm:text-[9px] uppercase font-bold text-[#78350f] dark:text-yellow-400 tracking-[0.2em] flex items-center gap-1 border-[1px] border-yellow-500/30 rounded-full py-0 shadow-sm"><span>🏆 WINNER</span></div>${winnerRows}<div class="text-[10px] sm:text-[11px] font-bold text-[#78350f] dark:text-[#facc15] tracking-widest uppercase mt-0.5 mb-0.5 animate-pulse drop-shadow-md">✦ ${handNameStr} ✦</div><div class="text-[7px] uppercase opacity-40 mt-0 mb-0 tracking-widest">${t('community')}</div>${commHTML}</div>`;
+                } else {
+                    let commHTML = `<div class="flex justify-center gap-0.5 sm:gap-1 h-16 sm:h-24 mt-0.5">`; for(let i=0; i<5; i++) commHTML += this.renderCard(s.communityCards[i], true, false, 'large'); commHTML += `</div>`;
+                    centerContainer.innerHTML = `<div class="text-center relative z-10"><p id="txt-pot-label" class="text-[8px] sm:text-[9px] uppercase tracking-widest opacity-50 font-mono mb-0">${t('pot')}</p><p class="text-2xl sm:text-3xl font-mono font-bold tracking-tighter leading-none" id="ui-pot">${s.pot}</p></div><div class="relative z-10">${commHTML}</div>`;
+                }
+                const humanContainer = document.getElementById('human-player-container'); 
+                
+                let oddsBtnText = app.showOdds ? `<span class="text-green-600 dark:text-green-400">${t('oddsOn')}</span>` : `<span>${t('oddsOff')}</span>`;
+                let oddsBtn = `<button onclick="app.toggleOdds()" class="flex items-center justify-center border-[1.5px] border-gray-400 dark:border-gray-600 rounded-full px-2.5 sm:px-3 py-1 opacity-80 hover:opacity-100 hover:scale-105 active:scale-95 transition-all shadow-md text-[8px] sm:text-[9px] tracking-widest shrink-0 font-bold bg-white dark:bg-[#111] ${app.showOdds ? 'border-green-500/50 dark:border-green-500/50 ring-2 ring-green-500/20' : ''}">
+                    ${oddsBtnText}
+                </button>`;
+
+                let oddsDisplay = ''; 
+                if (app.showOdds && s.myOdds !== null && s.stage < 4) { 
+                    const oddsVal = typeof s.myOdds === 'number' ? s.myOdds.toFixed(1) + '%' : s.myOdds; 
+                    const colorClass = s.players[0].folded ? 'text-[#7d9e85] dark:text-[#6b8e73]' : 'text-green-600 dark:text-green-400';
+                    oddsDisplay = `<div class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-max text-sm sm:text-lg font-mono font-bold ${colorClass} drop-shadow-md leading-none animate-pulse">${oddsVal}</div>`; 
+                }
+
+                let oddsSection = `<div class="relative flex flex-col items-center justify-center mt-3 sm:mt-4">${oddsDisplay}${oddsBtn}</div>`;
+
+                humanContainer.innerHTML = `<div class="w-full flex items-center justify-center relative z-10"><div class="flex-1 flex justify-end items-center"></div><div class="shrink-0 relative">${this.renderPlayerBox(s.players[0], s.turnIndex === 0, true)}</div><div class="flex-1 flex justify-start items-center ml-3 sm:ml-5">${oddsSection}</div></div>`;
+                
+                const aiContainer = document.getElementById('ai-players-container'); aiContainer.innerHTML = ''; for(let i=1; i<s.players.length; i++) aiContainer.innerHTML += this.renderPlayerBox(s.players[i], s.turnIndex === i, false);
+                const actionBar = document.getElementById('action-bar'); if (s.stage === 4) { actionBar.classList.remove('opacity-50', 'pointer-events-none'); document.getElementById('btn-fold').parentElement.classList.add('hidden'); document.getElementById('raise-container').classList.add('hidden'); document.getElementById('next-hand-container').classList.remove('hidden'); }
+                else if (s.turnIndex !== 0 || s.players[0].folded) actionBar.classList.add('opacity-50', 'pointer-events-none');
+            },
+            renderShowdown() { this.render(); },
+            updateHumanControls(p) {
+                const s = this.state; const actionBar = document.getElementById('action-bar'); actionBar.classList.remove('opacity-50', 'pointer-events-none'); document.getElementById('btn-fold').parentElement.classList.remove('hidden'); document.getElementById('raise-container').classList.remove('hidden'); document.getElementById('next-hand-container').classList.add('hidden');
+                const toCall = s.currentBet - p.roundBet; const btnCall = document.getElementById('btn-call'); if (toCall === 0) btnCall.innerText = t('btnCheck'); else btnCall.innerText = `${t('btnCall').split(' ')[0]} ${toCall}`;
+                const blindAmt = s.players.length === 2 ? 200 : (s.players.length === 3 ? 100 : (s.players.length === 4 ? 50 : 20)); let minR = toCall + blindAmt; const maxBet = s.players.length === 2 ? 500 : (s.players.length === 3 ? 400 : (s.players.length === 4 ? 300 : 200)); let maxR = Math.min(maxBet - p.roundBet, p.chips);
+                const btnRaise = document.getElementById('btn-raise'); 
+                const btnSub100 = document.getElementById('btn-raise-sub100'); 
+                const btnSub = document.getElementById('btn-raise-sub'); 
+                const btnSub50 = document.getElementById('btn-raise-sub50');
+                const btnAdd = document.getElementById('btn-raise-add'); 
+                const btnAdd50 = document.getElementById('btn-raise-add50');
+                const btnAdd100 = document.getElementById('btn-raise-add100');
+                const btnMax = document.getElementById('btn-raise-max'); 
+                const raiseVal = document.getElementById('raise-val');
+                
+                if (p.hasRaisedThisRound || maxR < minR || p.chips <= toCall) { 
+                    s.raiseInputVal = 0; raiseVal.innerText = p.hasRaisedThisRound ? 'MAX(1/1)' : 'MAX'; 
+                    btnSub.disabled = true; if(btnSub50) btnSub50.disabled = true; if(btnSub100) btnSub100.disabled = true;
+                    btnAdd.disabled = true; if(btnAdd50) btnAdd50.disabled = true; if(btnAdd100) btnAdd100.disabled = true;
+                    btnRaise.disabled = true; if(btnMax) btnMax.disabled = true; 
+                }
+                else { 
+                    btnRaise.disabled = false; s.raiseInputVal = minR; raiseVal.innerText = s.raiseInputVal; 
+                    btnSub.disabled = true; if(btnSub50) btnSub50.disabled = true; if(btnSub100) btnSub100.disabled = true;
+                    btnAdd.disabled = (s.raiseInputVal >= maxR); if(btnAdd50) btnAdd50.disabled = (s.raiseInputVal >= maxR); if(btnAdd100) btnAdd100.disabled = (s.raiseInputVal >= maxR);
+                    if(btnMax) btnMax.disabled = (s.raiseInputVal >= maxR); 
+                }
+            },
+            renderCard(card, faceUp = false, isWinningCard = false, size = 'normal') { 
+                let sizeClass = size === 'large' ? 'w-10 h-14 sm:w-14 sm:h-20' : 'w-7 h-10 sm:w-10 sm:h-14';
+                let txtClass = size === 'large' ? 'text-[14px] sm:text-[18px]' : 'text-[12px] sm:text-[14px]';
+                let iconClass = size === 'large' ? 'text-[20px] sm:text-[28px]' : 'text-[16px] sm:text-[20px]';
+
+                if (!card) return `<div class="${sizeClass} border-[1px] border-dashed border-gray-400 dark:border-gray-600 opacity-30 flex items-center justify-center rounded-md shrink-0"></div>`; 
+                if (!faceUp) return `<div class="card-enter ${sizeClass} border-[1.5px] border-solid border-black dark:border-white bg-gray-200 dark:bg-gray-800 rounded-md shadow-sm relative z-10 shrink-0"></div>`; 
+                let colorClass = 'text-black dark:text-white'; 
+                if (card.s === 'h') colorClass = 'text-red-600 dark:text-red-500'; 
+                else if (card.s === 'd') colorClass = 'text-[#9d174d] dark:text-[#f472b6]'; 
+                else if (card.s === 'c') colorClass = 'text-[#1e3a8a] dark:text-[#60a5fa]'; 
+                const winClass = isWinningCard ? 'ring-2 sm:ring-[3px] ring-yellow-500 scale-110 z-20 shadow-lg' : 'relative z-10'; 
+                return `<div class="card-enter bg-white dark:bg-gray-900 ${sizeClass} border-[1.5px] border-solid border-black dark:border-white flex flex-col items-center justify-center rounded-md shrink-0 ${winClass}"><span class="${txtClass} font-bold leading-none ${colorClass}">${formatRank(card.r)}</span><span class="${iconClass} leading-none mt-0 ${colorClass}">${SUIT_SYMBOLS[card.s]}</span></div>`; 
+            },
+            renderPlayerBox(p, isTurn, isHuman) { 
+                const isDealer = this.state.dealerIndex === this.state.players.indexOf(p); 
+                const isShowdown = this.state.stage === 4; 
+                const showCards = isHuman || (isShowdown && !p.folded); 
+                const boxStyle = isTurn && !isShowdown ? 'border-black dark:border-white shadow-md' : 'border-gray-200 dark:border-gray-800 opacity-80'; 
+                const foldedStyle = p.folded || isShowdown ? 'grayscale opacity-40' : ''; 
+                const myBorder = isHuman && !isShowdown ? 'border-b-[1.5px] border-b-black dark:border-b-white' : ''; 
+                const cSize = isHuman ? 'large' : 'normal';
+                const boxWidthClass = isHuman ? 'max-w-[5.5rem] sm:max-w-[7rem]' : 'max-w-[3.5rem] sm:max-w-[4.5rem]';
+                
+                return `<div class="relative flex flex-col items-center transition-all duration-300 ${foldedStyle} ${myBorder} w-full ${boxWidthClass} flex-1 min-w-0 z-10">${isDealer ? `<div class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full border-[1px] border-black dark:border-white bg-white dark:bg-black text-black dark:text-white flex items-center justify-center text-[7px] font-bold z-20 shadow-sm">D</div>` : ''}${p.status ? `<div class="absolute -top-2 text-[6px] sm:text-[7px] uppercase tracking-widest font-mono bg-black text-white dark:bg-white dark:text-black px-1 py-0.5 whitespace-nowrap z-20 rounded-sm">${p.status}</div>` : ''}<div class="flex justify-center -space-x-1.5 sm:-space-x-2 mb-0.5 z-10 relative">${p.cards.length ? this.renderCard(p.cards[0], showCards, false, cSize) : this.renderCard(null, false, false, cSize)} ${p.cards.length ? this.renderCard(p.cards[1], showCards, false, cSize) : this.renderCard(null, false, false, cSize)}</div><div class="w-full border-[1px] p-0.5 text-center bg-white dark:bg-[#111] transition-all duration-300 ${boxStyle} relative z-10 rounded-sm"><div class="text-[6px] sm:text-[7px] font-mono opacity-50 uppercase tracking-widest truncate">${p.name}</div><div class="font-mono text-[8px] sm:text-[9px] font-bold leading-none truncate">${p.chips}</div>${p.rebuyCount > 0 ? `<div class="flex justify-center gap-[2px] mt-[2px] mb-[1px] flex-wrap w-full px-1">${'<div class="w-1 h-1 rounded-full bg-red-600/80 shadow-sm shrink-0"></div>'.repeat(p.rebuyCount)}</div>` : ''}${p.roundBet > 0 ? `<div class="text-[6px] sm:text-[7px] font-mono text-blue-600 dark:text-blue-400 mt-[1px] border-t-[1px] border-dashed border-gray-300 pt-[1px] truncate leading-none">Bet: ${p.roundBet}</div>` : '<div class="h-2 sm:h-2.5 mt-[1px]"></div>'}</div></div>`; 
+            }
+        };
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
