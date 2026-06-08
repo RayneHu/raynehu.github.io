@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2.5D 完美物理骰宝 - 最终旗舰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 八大色彩主题与明暗变量系统 */
+        :root, [data-theme="dark"] {
+            --bg-main: #080808; --bg-board: #111111; --bg-zone: #1c1c1c; --border-zone: #2a2a2a; --text-main: #e5e5e5;
+            --panel-bg: rgba(0,0,0,0.6); --panel-border: rgba(255,255,255,0.1); --accent-gold: #d4af37;
+            --c-blue: #60a5fa; --c-yellow: #facc15; --c-green: #4ade80; --c-red: #f87171;
+            --bg-blue: rgba(37, 99, 235, 0.2); --bg-yellow: rgba(234, 179, 8, 0.2); --bg-green: rgba(22, 163, 74, 0.2); --bg-red: rgba(220, 38, 38, 0.2);
+            --sum-color: #facc15; --panel-text: #d1d5db; --dice-bg: radial-gradient(circle at center, #1b2432 0%, #05080c 100%);
+        }
+        [data-theme="white"] {
+            --bg-main: #f3f4f6; --bg-board: #ffffff; --bg-zone: #f9fafb; --border-zone: #d1d5db; --text-main: #111827;
+            --panel-bg: rgba(255,255,255,0.85); --panel-border: rgba(0,0,0,0.15); --accent-gold: #b48600;
+            --c-blue: #2563eb; --c-yellow: #a16207; --c-green: #15803d; --c-red: #dc2626;
+            --bg-blue: rgba(37, 99, 235, 0.1); --bg-yellow: rgba(234, 179, 8, 0.1); --bg-green: rgba(22, 163, 74, 0.1); --bg-red: rgba(220, 38, 38, 0.1);
+            --sum-color: #5c4033; --panel-text: #4b5563; --dice-bg: #fffff0;
+        }
+        [data-theme="celtic"] {
+            --bg-main: #011810; --bg-board: #022519; --bg-zone: #043b28; --border-zone: #065f41; --text-main: #ecfdf5;
+            --panel-bg: rgba(2, 37, 25, 0.75); --panel-border: rgba(16, 185, 129, 0.2); --accent-gold: #fbbf24;
+            --c-blue: #93c5fd; --c-yellow: #fde047; --c-green: #6ee7b7; --c-red: #fca5a5;
+            --bg-blue: rgba(59, 130, 246, 0.3); --bg-yellow: rgba(234, 179, 8, 0.3); --bg-green: rgba(16, 185, 129, 0.3); --bg-red: rgba(239, 68, 68, 0.3);
+            --sum-color: #facc15; --panel-text: #d1d5db; --dice-bg: radial-gradient(circle at center, #022c1e 0%, #01110b 100%);
+        }
+        [data-theme="pink"] {
+            --bg-main: #fdf4ff; --bg-board: #faf5ff; --bg-zone: #f3e8ff; --border-zone: #e9d5ff; --text-main: #4c1d95;
+            --panel-bg: rgba(255, 255, 255, 0.85); --panel-border: rgba(192, 132, 252, 0.4); --accent-gold: #c026d3;
+            --c-blue: #3b82f6; --c-yellow: #ca8a04; --c-green: #16a34a; --c-red: #e11d48;
+            --bg-blue: rgba(59, 130, 246, 0.15); --bg-yellow: rgba(202, 138, 4, 0.15); --bg-green: rgba(22, 163, 74, 0.15); --bg-red: rgba(225, 29, 72, 0.15);
+            --sum-color: #5c4033; --panel-text: #4b5563; --dice-bg: #fffff0;
+        }
+        [data-theme="starry"] {
+            --bg-main: #0f172a; --bg-board: #1e293b; --bg-zone: #334155; --border-zone: #475569; --text-main: #f8fafc;
+            --panel-bg: rgba(15, 23, 42, 0.8); --panel-border: rgba(148, 163, 184, 0.2); --accent-gold: #fbbf24;
+            --c-blue: #93c5fd; --c-yellow: #fde047; --c-green: #86efac; --c-red: #fca5a5;
+            --bg-blue: rgba(59, 130, 246, 0.25); --bg-yellow: rgba(234, 179, 8, 0.25); --bg-green: rgba(34, 197, 94, 0.25); --bg-red: rgba(239, 68, 68, 0.25);
+            --sum-color: #facc15; --panel-text: #cbd5e1; --dice-bg: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+        }
+        [data-theme="ivory"] {
+            --bg-main: #fffff0; --bg-board: #fdfdf5; --bg-zone: #f5f5dc; --border-zone: #e8e8d0; --text-main: #4a4a4a;
+            --panel-bg: rgba(255, 255, 240, 0.9); --panel-border: rgba(160, 160, 140, 0.3); --accent-gold: #b48600;
+            --c-blue: #2563eb; --c-yellow: #b45309; --c-green: #15803d; --c-red: #dc2626;
+            --bg-blue: rgba(37, 99, 235, 0.1); --bg-yellow: rgba(217, 119, 6, 0.1); --bg-green: rgba(21, 128, 61, 0.1); --bg-red: rgba(220, 38, 38, 0.1);
+            --sum-color: #5c4033; --panel-text: #4b5563; --dice-bg: #fffff0;
+        }
+        [data-theme="hermes"] {
+            --bg-main: #2c1000; --bg-board: #4a1c00; --bg-zone: #6b2800; --border-zone: #8a3600; --text-main: #ffeedd;
+            --panel-bg: rgba(44, 16, 0, 0.8); --panel-border: rgba(255, 165, 0, 0.3); --accent-gold: #fbbf24;
+            --c-blue: #93c5fd; --c-yellow: #fde047; --c-green: #86efac; --c-red: #fca5a5;
+            --bg-blue: rgba(59, 130, 246, 0.25); --bg-yellow: rgba(234, 179, 8, 0.25); --bg-green: rgba(34, 197, 94, 0.25); --bg-red: rgba(239, 68, 68, 0.25);
+            --sum-color: #facc15; --panel-text: #fdba74; --dice-bg: radial-gradient(circle at center, #7c2d12 0%, #2c1000 100%);
+        }
+        [data-theme="grass"] {
+            --bg-main: #f7fee7; --bg-board: #ecfccb; --bg-zone: #d9f99d; --border-zone: #bef264; --text-main: #3f6212;
+            --panel-bg: rgba(247, 254, 231, 0.9); --panel-border: rgba(132, 204, 22, 0.4); --accent-gold: #b45309;
+            --c-blue: #1d4ed8; --c-yellow: #b45309; --c-green: #4d7c0f; --c-red: #b91c1c;
+            --bg-blue: rgba(29, 78, 216, 0.1); --bg-yellow: rgba(180, 83, 9, 0.1); --bg-green: rgba(77, 124, 15, 0.1); --bg-red: rgba(185, 28, 28, 0.1);
+            --sum-color: #5c4033; --panel-text: #4b5563; --dice-bg: #fffff0;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: var(--bg-main); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; user-select: none; display: flex; flex-direction: column; justify-content: center; height: 100vh; padding: 10vh 0; box-sizing: border-box; transition: background-color 0.3s; }
+        
+        #game-container { height: 80vh; width: 100vw; display: flex; flex-direction: column; max-width: 600px; margin: 0 auto; box-shadow: 0 0 50px rgba(0,0,0,0.5); background: var(--bg-board); position: relative; transition: background-color 0.3s;}
+
+        /* 顶部 2.5D 骰盅区 */
+        #dice-area { flex: 0 0 45%; width: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: var(--dice-bg); overflow: hidden; transition: background 0.3s; }
+        
+        #top-controls { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; z-index: 50; width: 100%; padding: 0 10px; }
+        .top-select { background: var(--panel-bg); color: var(--panel-text); border: 1px solid var(--panel-border); border-radius: 4px; padding: 2px 4px; font-size: 10px; font-weight: bold; outline: none; backdrop-filter: blur(4px); text-align: center; text-align-last: center; appearance: none; transition: all 0.3s; cursor: pointer;}
+        
+        #history-panel { position: absolute; top: 35px; left: 10px; bottom: 10px; width: 75px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 6px; display: flex; flex-direction: column; align-items: center; padding: 6px 0; gap: 4px; overflow-y: auto; z-index: 20; backdrop-filter: blur(4px); scrollbar-width: none; transition: all 0.3s; }
+        #history-panel::-webkit-scrollbar { display: none; }
+        .history-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 6px; height: 20px;}
+        .history-item { width: 42px; height: 18px; flex-shrink: 0; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.3); letter-spacing: 2px; padding-left: 2px;}
+
+        #result-panel { position: absolute; top: 35px; right: 10px; bottom: 10px; width: 65px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.2); display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 10px 4px; z-index: 20; backdrop-filter: blur(6px); transition: all 0.3s; }
+        .result-die-ui { width: 18px; height: 18px; border-radius: 4px; position: relative; box-shadow: inset 0 0 3px rgba(0,0,0,0.5), 0 2px 3px rgba(0,0,0,0.4); margin: 2px 0;}
+        .result-die-ui .ui-dot { width: 4px; height: 4px; }
+
+        .base-plate { position: relative; width: 190px; height: 110px; background: radial-gradient(ellipse at center, #115e3b 0%, #062b1a 100%); border-radius: 50%; box-shadow: 0 4px 0 #2c160b, 0 8px 0 #1f0f07, 0 16px 25px rgba(0,0,0,0.95), inset 0 2px 5px rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center; margin-top: 5px;}
+        
+        .dice-container { position: absolute; top: 50%; left: 50%; width: 0; height: 0; z-index: 2; perspective: 1000px; }
+        .die-cube { position: absolute; width: 34px; height: 34px; margin-left: -17px; margin-top: -17px; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .die-cube.tumbling { transition: transform 0.1s linear; }
+        
+        .die-face { position: absolute; width: 100%; height: 100%; border-radius: 4px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); padding: 4px; gap: 2px; box-shadow: inset 0 0 10px rgba(0,0,0,0.4), inset 1px 1px 4px rgba(255,255,255,0.7), 0 0 1px rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.3); backface-visibility: hidden; }
+        .die-cube.morandi-pink .die-face { background: radial-gradient(circle at 30% 30%, #ff8fae, #e11d48); background-color: #e11d48;}
+        .die-cube.morandi-green .die-face { background: radial-gradient(circle at 30% 30%, #6ee7b7, #059669); background-color: #059669;}
+        .die-cube.morandi-blue .die-face { background: radial-gradient(circle at 30% 30%, #93c5fd, #2563eb); background-color: #2563eb;}
+        
+        .face-top    { transform: rotateX(90deg) translateZ(17px); } 
+        .face-bottom { transform: rotateX(-90deg) translateZ(17px); }
+        .face-front  { transform: translateZ(17px); }                  
+        .face-back   { transform: rotateY(180deg) translateZ(17px); }  
+        .face-right  { transform: rotateY(90deg) translateZ(17px); }   
+        .face-left   { transform: rotateY(-90deg) translateZ(17px); }  
+        .die-dot { width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 1px 1px 4px rgba(0,0,0,0.9), 0 1px 1px rgba(255,255,255,0.3); visibility: hidden; }
+        
+        .glass-cup { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 190px; height: 155px; border-radius: 95px 95px 95px 95px / 105px 105px 55px 55px; background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.0) 100%); border: 1px solid rgba(255,255,255,0.05); border-bottom: 2px solid rgba(255,255,255,0.15); backdrop-filter: blur(0.5px); -webkit-backdrop-filter: blur(0.5px); box-shadow: inset 0 -2px 5px rgba(255,255,255,0.05), 0 5px 15px rgba(0,0,0,0.4); z-index: 3; pointer-events: none; transform-origin: bottom center; }
+        
+        @keyframes shake { 0%, 100% { transform: translateX(-50%) rotate(0deg) translateY(0); } 25% { transform: translateX(-51%) rotate(-2deg) translateY(-2px); } 50% { transform: translateX(-49%) rotate(2deg) translateY(-1px); } 75% { transform: translateX(-50.5%) rotate(-1deg) translateY(-2px); } }
+        .shaking .glass-cup { animation: shake 0.12s infinite; }
+        #message-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 6px; color: #fff; font-size: 14px; text-align: center; opacity: 0; transition: opacity 0.2s; z-index: 60; border: 1px solid rgba(255, 255, 255, 0.2); pointer-events: none;}
+        
+        @keyframes winnerBlink { 0%, 100% { box-shadow: 0 0 15px 4px rgba(255,215,0,0.8); border-color: gold; background-color: rgba(255,215,0,0.3); } 50% { box-shadow: 0 0 5px 1px rgba(255,215,0,0.3); border-color: transparent; } }
+        .winner-glow { animation: winnerBlink 1s infinite; z-index: 10; border-radius: 4px;}
+        
+        #action-btn { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); padding: 6px 28px; border-radius: 99px; font-weight: 900; font-size: 15px; cursor: pointer; z-index: 50; transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+        #action-btn:active { transform: translateX(-50%) scale(0.95); }
+        .btn-roll { background: #ca8a04; color: white; box-shadow: 0 0 15px rgba(202,138,4,0.6); border: 2px solid #fde047; }
+        .btn-next { background: #ea580c; color: white; box-shadow: 0 0 15px rgba(234,88,12,0.8); border: 2px solid #fdba74; animation: winnerBlink 1s infinite; }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+        #betting-board { flex: 0 0 45%; display: flex; flex-direction: column; padding: 4px; gap: 4px; }
+        .bet-row { display: flex; width: 100%; gap: 3px; }
+        
+        .bet-zone { flex: 1; min-width: 0; background: var(--bg-zone); border: 1px solid var(--border-zone); border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: filter 0.1s; padding: 2px; text-align: center; overflow: visible; } 
+        .bet-zone:active { filter: brightness(1.2); }
+        .bet-title { font-weight: 600; color: var(--text-main); line-height: 1.1; display: flex; justify-content: center; align-items: center; transition: color 0.3s;}
+        
+        .chip-base { position: relative; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; box-shadow: 0 3px 6px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.4), inset 0 -3px 4px rgba(0,0,0,0.4); text-shadow: 0 1px 1px rgba(0,0,0,0.5); }
+        .chip-base::before { content: ''; position: absolute; border-radius: 50%; border: 1px dashed rgba(255,255,255,0.6); pointer-events: none; }
+        .chip-base::after { content: ''; position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); pointer-events: none; }
+        
+        .chip-btn { width: 34px; height: 34px; font-size: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent; }
+        .chip-btn::before { inset: 3px; border-width: 1.5px; } .chip-btn::after { inset: 6px; }
+        .chip-btn.selected { transform: scale(1.15); box-shadow: 0 0 12px var(--accent-gold), inset 0 2px 3px rgba(255,255,255,0.4); border-color: var(--accent-gold); z-index: 10; }
+
+        .chip-marker { position: absolute !important; width: 16px; height: 16px; font-size: 6px; bottom: 2px; right: 2px; z-index: 15; pointer-events: none; border: 1px solid rgba(0,0,0,0.8); }
+        .chip-marker::before { inset: 1px; border-width: 1px; } .chip-marker::after { inset: 3px; }
+
+        .chip-10 { background: radial-gradient(circle at 40% 30%, #f8fafc, #94a3b8); border-color: #334155; color: #0f172a; text-shadow: 0 1px 0 rgba(255,255,255,0.8); }
+        .chip-20 { background: radial-gradient(circle at 40% 30%, #f87171, #991b1b); border-color: #450a0a; color: #fff; }
+        .chip-50 { background: radial-gradient(circle at 40% 30%, #60a5fa, #1e3a8a); border-color: #172554; color: #fff; }
+        .chip-100 { background: radial-gradient(circle at 40% 30%, #4ade80, #14532d); border-color: #052e16; color: #fff; }
+        .chip-200 { background: radial-gradient(circle at 40% 30%, #334155, #020617); border-color: #d4af37; color: var(--accent-gold); text-shadow: none; }
+
+        /* 控制栏 - 修改 padding: 0 4px 完美匹配棋盘内嵌尺寸 */
+        #controls { flex: 0 0 10%; background: var(--bg-board); display: flex; align-items: center; padding: 0 4px; border-top: 1px solid var(--border-zone); transition: background-color 0.3s; position: relative; }
+        
+        .dice-icon { width: 11px; height: 11px; background: #fff; border-radius: 2px; display: inline-block; position: relative; box-shadow: inset 0 0 2px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.5); }
+        .ui-dot { width: 2.2px; height: 2.2px; border-radius: 50%; position: absolute; }
+        .dice-icon.red .ui-dot { background: #dc2626; } .dice-icon.black .ui-dot { background: #111; }
+        
+        .d1 .ui-dot { top: 4.4px; left: 4.4px; }
+        .d2 .ui-dot:nth-child(1) { top: 1.5px; left: 1.5px; } .d2 .ui-dot:nth-child(2) { bottom: 1.5px; right: 1.5px; }
+        .d3 .ui-dot:nth-child(1) { top: 1.5px; left: 1.5px; } .d3 .ui-dot:nth-child(2) { top: 4.4px; left: 4.4px; } .d3 .ui-dot:nth-child(3) { bottom: 1.5px; right: 1.5px; }
+        .d4 .ui-dot:nth-child(1) { top: 1.5px; left: 1.5px; } .d4 .ui-dot:nth-child(2) { top: 1.5px; right: 1.5px; } .d4 .ui-dot:nth-child(3) { bottom: 1.5px; left: 1.5px; } .d4 .ui-dot:nth-child(4) { bottom: 1.5px; right: 1.5px; }
+        .d5 .ui-dot:nth-child(1) { top: 1.5px; left: 1.5px; } .d5 .ui-dot:nth-child(2) { top: 1.5px; right: 1.5px; } .d5 .ui-dot:nth-child(3) { top: 4.4px; left: 4.4px; } .d5 .ui-dot:nth-child(4) { bottom: 1.5px; left: 1.5px; } .d5 .ui-dot:nth-child(5) { bottom: 1.5px; right: 1.5px; }
+        .d6 .ui-dot:nth-child(1) { top: 1.5px; left: 1.5px; } .d6 .ui-dot:nth-child(2) { top: 4.4px; left: 1.5px; } .d6 .ui-dot:nth-child(3) { bottom: 1.5px; left: 1.5px; } .d6 .ui-dot:nth-child(4) { top: 1.5px; right: 1.5px; } .d6 .ui-dot:nth-child(5) { top: 4.4px; right: 1.5px; } .d6 .ui-dot:nth-child(6) { bottom: 1.5px; right: 1.5px; }
+    </style>
+</head>
+<body data-theme="dark">
+
+<div id="game-container">
+    <div id="dice-area">
+        <div id="top-controls">
+            <select class="top-select" onchange="changeLang(this.value)">
+                <option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option>
+            </select>
+            <select class="top-select" onchange="changeTheme(this.value)">
+                <option value="dark" data-i18n="t_dark">暗黑</option><option value="white" data-i18n="t_white">纯白</option>
+                <option value="celtic" data-i18n="t_celtic">凯尔特绿</option><option value="pink" data-i18n="t_pink">浅粉紫</option>
+                <option value="starry" data-i18n="t_starry">星空灰</option><option value="ivory" data-i18n="t_ivory">象牙白</option>
+                <option value="hermes" data-i18n="t_hermes">爱马仕橙</option><option value="grass" data-i18n="t_grass">嫩草绿</option>
+            </select>
+            <div class="flex items-center gap-1 rounded px-1 backdrop-blur" style="background: var(--panel-bg); border: 1px solid var(--panel-border); transition: all 0.3s;">
+                <select id="save-slot" class="!border-none !bg-transparent font-bold w-12 outline-none text-[10px] appearance-none cursor-pointer" style="color: var(--sum-color); text-align: center; text-align-last: center;">
+                    <option value="0" data-i18n="slot_1">档 1</option><option value="1" data-i18n="slot_2">档 2</option>
+                    <option value="2" data-i18n="slot_3">档 3</option><option value="3" data-i18n="slot_4">档 4</option>
+                    <option value="4" data-i18n="slot_5">档 5</option><option value="5" data-i18n="slot_6">档 6</option>
+                    <option value="6" data-i18n="slot_7">档 7</option><option value="7" data-i18n="slot_8">档 8</option>
+                </select>
+                <div class="w-[1px] h-3 opacity-30" style="background: var(--panel-text);"></div>
+                <button onclick="saveGame()" class="flex items-center justify-center p-1 opacity-70 hover:opacity-100 transition" style="color: var(--panel-text);">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                </button>
+                <button onclick="loadGame()" class="flex items-center justify-center p-1 opacity-70 hover:opacity-100 transition" style="color: var(--panel-text);">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="history-panel"></div>
+        
+        <div id="result-panel">
+            <div class="flex flex-col items-center">
+                <div class="text-[9px] font-bold" style="color: var(--panel-text);" data-i18n="round">局号</div>
+                <div id="round-num" class="text-[11px] font-mono mt-[1px]" style="color: var(--panel-text);">001</div>
+            </div>
+            <div id="res-type" class="text-[14px] font-black tracking-widest" style="color: var(--panel-text);" data-i18n="wait">待开</div>
+            <div id="res-dice" class="flex flex-col gap-1">
+                <div class="result-die-ui bg-[#ff8fae]"></div>
+                <div class="result-die-ui bg-[#6ee7b7]"></div>
+                <div class="result-die-ui bg-[#93c5fd]"></div>
+            </div>
+            <div id="res-sum" class="text-[15px] font-black leading-none" style="color: var(--sum-color);">--</div>
+            <div id="res-win" class="text-[9px] text-gray-400 text-center leading-tight" data-i18n="waiting_bet">等待下注</div>
+        </div>
+
+        <div id="message-box"></div>
+        
+        <button id="action-btn" class="btn-roll" onclick="handleActionBtn()" data-i18n="roll">摇骰</button>
+
+        <div class="base-plate" id="shaker-container">
+            <div class="dice-container">
+                <div class="die-cube morandi-pink" id="die1"></div>
+                <div class="die-cube morandi-green" id="die2"></div>
+                <div class="die-cube morandi-blue" id="die3"></div>
+            </div>
+            <div class="glass-cup"></div>
+        </div>
+    </div>
+
+    <!-- 下注板 -->
+    <div id="betting-board">
+        <div class="bet-row" id="row1" style="flex: 3;"></div>
+        <div class="bet-row" id="row1_5" style="flex: 2;"></div>
+        <div class="bet-row" id="row2" style="flex: 2;"></div>
+        <div class="bet-row" id="row3" style="flex: 2;"></div>
+        <div class="bet-row" id="row4" style="flex: 2;"></div>
+    </div>
+
+    <!-- 底部操作栏 -->
+    <div id="controls">
+        <div class="flex flex-col pl-1 min-w-[50px]">
+            <span class="text-[10px] font-semibold" style="color: var(--text-main);"><span data-i18n="balance">余额</span> <span id="balance-display" class="text-[var(--accent-gold)] font-bold">10000</span></span>
+            <span class="text-[9px]" style="color: var(--panel-text);"><span data-i18n="bet">总注</span> <span id="total-bet-display">0</span></span>
+        </div>
+        
+        <div class="flex gap-1.5 pl-2">
+            <div class="chip-base chip-btn chip-10 selected" onclick="selectChip(10, this)">10</div>
+            <div class="chip-base chip-btn chip-20" onclick="selectChip(20, this)">20</div>
+            <div class="chip-base chip-btn chip-50" onclick="selectChip(50, this)">50</div>
+            <div class="chip-base chip-btn chip-100" onclick="selectChip(100, this)">100</div>
+            <div class="chip-base chip-btn chip-200" onclick="selectChip(200, this)">200</div>
+        </div>
+
+        <!-- 强锁定4键网格架构：与上方 5&6点 区域宽度实现像素级数学对齐 (33.333% - 2px) -->
+        <div class="flex flex-col ml-auto" style="width: calc(33.3333% - 2px);">
+            <div class="grid grid-cols-4 gap-[2px] h-[26px] w-full">
+                <!-- 撤销 (Undo) -->
+                <button onclick="undoBet()" class="flex items-center justify-center rounded shadow-sm transition hover:opacity-80" style="background: var(--panel-bg); color: var(--panel-text); border: 1px solid var(--panel-border);">
+                    <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                </button>
+                <!-- 单清 (Clear 1) -->
+                <button id="clear-mode-btn" onclick="toggleClearMode()" class="flex items-center justify-center rounded shadow-sm transition hover:opacity-80" style="background: var(--panel-bg); color: var(--panel-text); border: 1px solid var(--panel-border);">
+                    <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+                </button>
+                <!-- 全清 (Clear All) -->
+                <button onclick="clearBets()" class="flex items-center justify-center rounded shadow-sm transition hover:opacity-80" style="background: var(--panel-bg); color: var(--panel-text); border: 1px solid var(--panel-border);">
+                    <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+                <!-- 再下注 (Re-bet) -->
+                <button onclick="rebet()" class="flex items-center justify-center rounded shadow-sm transition hover:opacity-80" style="background: var(--panel-bg); color: var(--panel-text); border: 1px solid var(--panel-border);">
+                    <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                </button>
+            </div>
+            
+            <!-- 专属制作者签名：挂载在按钮区正下方，精准缩小至 80% 并保持靠右对齐 -->
+            <div class="text-[6.5px] font-mono tracking-widest text-gray-500/50 pointer-events-none mt-[3px] text-right" style="transform: scale(0.8); transform-origin: right top;">PROGRAMMED BY RAYNEHU</div>
+        </div>
+    </div>
+    
+    <!-- 破产重生遮罩层 -->
+    <div id="game-over-overlay" class="hidden absolute inset-0 bg-black/80 z-[100] flex-col items-center justify-center backdrop-blur-sm">
+        <div class="text-4xl font-black text-red-500 mb-4 tracking-widest drop-shadow-lg" data-i18n="game_over">游戏结束</div>
+        <div class="text-gray-300 mb-8 text-sm" data-i18n="bankrupt">您的余额已耗尽</div>
+        <button onclick="restartGame()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-8 rounded-full shadow-[0_0_15px_rgba(202,138,4,0.6)] border border-yellow-300 transition text-lg tracking-wider" data-i18n="restart">重新开始</button>
+    </div>
+</div>
+
+<script>
+    // === 多语言字典 ===
+    const i18n = {
+        zh: { small: "小", big: "大", pair: "对子", triple: "豹子", round: "局号", wait: "待开", waiting_bet: "等待下注", rolling: "摇骰中...", win: "赢取", lose: "庄家通吃", balance: "余额", bet: "总注", no_prev_bet: "没有上一局下注记录", roll: "摇骰", min_bet: "最低下注", no_balance: "余额不足", pls_bet: "请先下注", no_more: "买定离手", save: "存档成功", load: "读档成功", no_save: "该档无记录", next_round: "下一局", slot_1:"档 1", slot_2:"档 2", slot_3:"档 3", slot_4:"档 4", slot_5:"档 5", slot_6:"档 6", slot_7:"档 7", slot_8:"档 8", t_dark:"暗黑", t_white:"纯白", t_celtic:"凯尔特绿", t_pink:"浅粉紫", t_starry:"星空灰", t_ivory:"象牙白", t_hermes:"爱马仕橙", t_grass:"嫩草绿", game_over: "游戏结束", bankrupt: "您的余额已耗尽", restart: "重新开始" },
+        en: { small: "SMALL", big: "BIG", pair: "PAIR", triple: "TRIPLE", round: "RND", wait: "WAIT", waiting_bet: "WAITING", rolling: "ROLLING...", win: "WIN", lose: "LOSE", balance: "BAL", bet: "BET", no_prev_bet: "No previous bets", roll: "ROLL", min_bet: "MIN BET", no_balance: "NO FUNDS", pls_bet: "BET FIRST", no_more: "NO MORE BETS", save: "Saved", load: "Loaded", no_save: "Empty Slot", next_round: "NEXT ROUND", slot_1:"Slot 1", slot_2:"Slot 2", slot_3:"Slot 3", slot_4:"Slot 4", slot_5:"Slot 5", slot_6:"Slot 6", slot_7:"Slot 7", slot_8:"Slot 8", t_dark:"Dark", t_white:"White", t_celtic:"Celtic", t_pink:"Pink", t_starry:"Starry", t_ivory:"Ivory", t_hermes:"Hermes", t_grass:"Lime", game_over: "GAME OVER", bankrupt: "You are bankrupt", restart: "RESTART" },
+        ja: { small: "小", big: "大", pair: "ペア", triple: "ゾロ", round: "局", wait: "待機", waiting_bet: "ベット待ち", rolling: "ロール中...", win: "獲得", lose: "負け", balance: "残高", bet: "ベット", no_prev_bet: "前回のベット記録なし", roll: "振る", min_bet: "最小ベット", no_balance: "残高不足", pls_bet: "ベットして", no_more: "ベット終了", save: "保存完了", load: "読込完了", no_save: "データなし", next_round: "次へ", slot_1:"枠 1", slot_2:"枠 2", slot_3:"枠 3", slot_4:"枠 4", slot_5:"枠 5", slot_6:"枠 6", slot_7:"枠 7", slot_8:"枠 8", t_dark:"ダーク", t_white:"白", t_celtic:"緑", t_pink:"ピンク", t_starry:"星空", t_ivory:"象牙", t_hermes:"橙", t_grass:"ライム", game_over: "ゲームオーバー", bankrupt: "残高がなくなりました", restart: "再スタート" }
+    };
+    let lang = 'zh';
+    function t(key) { return i18n[lang][key] || key; }
+    
+    function changeLang(val) {
+        lang = val;
+        document.querySelectorAll('[data-i18n]').forEach(el => { el.innerText = t(el.getAttribute('data-i18n')); });
+        renderBoard(); renderChips();
+        const btn = document.getElementById('action-btn');
+        if (gameState === 'BETTING') btn.innerText = t('roll');
+        else if (gameState === 'PAYOUT') btn.innerText = t('next_round');
+    }
+    
+    function changeTheme(val) { 
+        document.body.setAttribute('data-theme', val); 
+        renderHistoryUI(); 
+        const clearBtn = document.getElementById('clear-mode-btn');
+        if(!isClearMode) {
+            clearBtn.style.background = 'var(--panel-bg)';
+            clearBtn.style.color = 'var(--panel-text)';
+            clearBtn.style.borderColor = 'var(--panel-border)';
+        }
+    }
+
+    // === 游戏逻辑状态机 ===
+    let gameState = 'BETTING'; 
+    let balance = 10000, currentChip = 10, bets = {}, previousBets = {};
+    let betHistoryStack = [], resultHistory = [], isClearMode = false, roundCounter = 1;
+    let saves = new Array(8).fill(null);
+    
+    try { let local = localStorage.getItem('sicbo_saves'); if(local) saves = JSON.parse(local); } catch(e){}
+
+    const MIN_BETS = { 'small': 50, 'big': 50, 'single_1': 30, 'single_2': 30, 'single_3': 30, 'single_4': 30, 'single_5': 30, 'single_6': 30 };
+    const DEFAULT_MIN = 10;
+    const sumOddsMap = { 4:50, 5:18, 6:14, 7:12, 8:8, 9:6, 10:6, 11:6, 12:6, 13:8, 14:12, 15:14, 16:18, 17:50 };
+    
+    function handleActionBtn() {
+        if (gameState === 'BETTING') startRoll();
+        else if (gameState === 'PAYOUT') nextRound();
+    }
+
+    function saveGame() {
+        if(gameState !== 'BETTING') return;
+        let slot = parseInt(document.getElementById('save-slot').value);
+        saves[slot] = { balance, roundCounter, resultHistory: [...resultHistory] };
+        try { localStorage.setItem('sicbo_saves', JSON.stringify(saves)); } catch(e){}
+        showMsg(`${t('save')} [${slot+1}]`, 1500);
+    }
+    function loadGame() {
+        if(gameState !== 'BETTING') return;
+        let slot = parseInt(document.getElementById('save-slot').value);
+        if(saves[slot]) {
+            balance = saves[slot].balance; roundCounter = saves[slot].roundCounter; resultHistory = [...saves[slot].resultHistory];
+            clearBetsLogical(); renderHistoryUI(); updateUI(); renderChips();
+            showMsg(`${t('load')} [${slot+1}]`, 1500);
+        } else { showMsg(t('no_save'), 1500); }
+    }
+    function restartGame() {
+        balance = 10000; roundCounter = 1; resultHistory = [];
+        document.getElementById('game-over-overlay').classList.replace('flex', 'hidden');
+        nextRound(true); 
+        updateHistoryAndScreen([1,2,3], [1,2,3], 6, false); 
+    }
+
+    function getUIResultDie(num, colorClass) {
+        let dotColor = (num === 1 || num === 4) ? 'bg-red-600' : 'bg-gray-900';
+        let html = `<div class="result-die-ui ${colorClass}">`;
+        const pos = {
+            1: ['top-[7px] left-[7px]'], 2: ['top-1 left-1', 'bottom-1 right-1'],
+            3: ['top-1 left-1', 'top-[7px] left-[7px]', 'bottom-1 right-1'],
+            4: ['top-1 left-1', 'top-1 right-1', 'bottom-1 left-1', 'bottom-1 right-1'],
+            5: ['top-1 left-1', 'top-1 right-1', 'top-[7px] left-[7px]', 'bottom-1 left-1', 'bottom-1 right-1'],
+            6: ['top-1 left-1', 'top-[7px] left-1', 'bottom-1 left-1', 'top-1 right-1', 'top-[7px] right-1', 'bottom-1 right-1']
+        };
+        pos[num].forEach(p => { html += `<div class="ui-dot ${dotColor} absolute rounded-full ${p}"></div>`; });
+        html += `</div>`; return html;
+    }
+
+    function getDiceIcon(num) {
+        let colorClass = (num === 1 || num === 4) ? 'red' : 'black';
+        let dots = ''; for(let k=0; k<num; k++) dots += '<div class="ui-dot"></div>';
+        return `<div class="dice-icon ${colorClass} d${num}">${dots}</div>`;
+    }
+
+    // === UI 生成 ===
+    function renderBoard() {
+        const row1 = document.getElementById('row1'); row1.innerHTML = `
+            <div class="bet-zone" data-zone="small" onclick="placeBet('small')" style="background: var(--bg-blue); border-color: var(--c-blue);">
+                <div class="bet-title text-2xl font-bold" style="color: var(--c-blue);">${t('small')}</div><div class="text-[9px] mt-1 font-bold" style="color: var(--accent-gold)">1:1</div>
+            </div>
+            <div class="bet-zone" data-zone="any_double" onclick="placeBet('any_double')" style="background: var(--bg-yellow); border-color: var(--c-yellow);">
+                <div class="bet-title text-sm font-bold" style="color: var(--c-yellow);">${t('pair')}</div><div class="text-[8px] mt-1 font-bold" style="color: var(--accent-gold)">3:1</div>
+            </div>
+            <div class="bet-zone" data-zone="any_triple" onclick="placeBet('any_triple')" style="background: var(--bg-green); border-color: var(--c-green);">
+                <div class="bet-title text-sm font-bold" style="color: var(--c-green);">${t('triple')}</div><div class="text-[8px] mt-1 font-bold" style="color: var(--accent-gold)">24:1</div>
+            </div>
+            <div class="bet-zone" data-zone="big" onclick="placeBet('big')" style="background: var(--bg-red); border-color: var(--c-red);">
+                <div class="bet-title text-2xl font-bold" style="color: var(--c-red);">${t('big')}</div><div class="text-[9px] mt-1 font-bold" style="color: var(--accent-gold)">1:1</div>
+            </div>
+        `;
+        const row1_5 = document.getElementById('row1_5'); row1_5.innerHTML = '';
+        for(let i=1; i<=6; i++) {
+            let z = document.createElement('div'); z.className = 'bet-zone'; z.dataset.zone = 'double_'+i; z.onclick = () => placeBet('double_'+i);
+            z.style.background = 'var(--bg-yellow)'; z.style.borderColor = 'var(--c-yellow)';
+            z.innerHTML = `<div class="flex gap-[1px]">${getDiceIcon(i)}${getDiceIcon(i)}</div><div class="text-[8px] font-bold mt-1" style="color: var(--accent-gold)">8:1</div>`; row1_5.appendChild(z);
+        }
+        for(let i=1; i<=6; i++) {
+            let z = document.createElement('div'); z.className = 'bet-zone'; z.dataset.zone = 'triple_'+i; z.onclick = () => placeBet('triple_'+i);
+            z.style.background = 'var(--bg-green)'; z.style.borderColor = 'var(--c-green)';
+            z.innerHTML = `<div class="flex gap-[1px] scale-90">${getDiceIcon(i)}${getDiceIcon(i)}${getDiceIcon(i)}</div><div class="text-[8px] font-bold mt-1" style="color: var(--accent-gold)">150:1</div>`; row1_5.appendChild(z);
+        }
+        const row2 = document.getElementById('row2'); row2.innerHTML = '';
+        for(let i=4; i<=17; i++) {
+            let z = document.createElement('div'); z.className = 'bet-zone'; z.dataset.zone = 'sum_' + i; z.onclick = () => placeBet('sum_'+i);
+            let colorVar = i <= 10 ? 'var(--c-blue)' : 'var(--c-red)';
+            z.innerHTML = `<div class="bet-title text-[15px] font-bold" style="color: ${colorVar}">${i}</div><div class="text-[8px] font-bold mt-[2px]" style="color: var(--accent-gold)">${sumOddsMap[i]}:1</div>`; row2.appendChild(z);
+        }
+        const row3 = document.getElementById('row3'); row3.innerHTML = '';
+        for(let i=1; i<=5; i++) {
+            for(let j=i+1; j<=6; j++) {
+                let z = document.createElement('div'); z.className = 'bet-zone'; z.dataset.zone = `combo_${i}_${j}`; z.onclick = () => placeBet(`combo_${i}_${j}`);
+                z.innerHTML = `<div class="flex gap-[3px] items-center justify-center">${getDiceIcon(i)}${getDiceIcon(j)}</div><div class="text-[8px] font-bold mt-1" style="color: var(--accent-gold)">5:1</div>`; row3.appendChild(z);
+            }
+        }
+        const row4 = document.getElementById('row4'); row4.innerHTML = '';
+        for(let i=1; i<=6; i++) {
+            let z = document.createElement('div'); z.className = 'bet-zone'; z.dataset.zone = 'single_' + i; z.onclick = () => placeBet('single_'+i);
+            z.innerHTML = `<div style="transform: scale(1.8); transform-origin: center; margin-top: 4px; margin-bottom: 4px;">${getDiceIcon(i)}</div><div class="text-[8px] font-bold mt-1" style="color: var(--accent-gold)">1:1</div>`;
+            row4.appendChild(z);
+        }
+    }
+
+    // === 精准修复的 3D 物理映射 ===
+    const dicePatterns = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const faceValueMap = { 'face-top': 1, 'face-bottom': 6, 'face-front': 2, 'face-back': 5, 'face-right': 3, 'face-left': 4 };
+
+    const rollRotations = {
+        1: { x: 0, y: 0, z: 0 },
+        6: { x: 180, y: 0, z: 0 },
+        2: { x: 90, y: 0, z: 0 },   
+        5: { x: -90, y: 0, z: 0 },  
+        3: { x: 0, y: 0, z: -90 },
+        4: { x: 0, y: 0, z: 90 }
+    };
+
+    function init3DDice() {
+        document.querySelectorAll('.die-cube').forEach(cube => {
+            cube.innerHTML = ''; 
+            for (let faceClass in faceValueMap) {
+                let face = document.createElement('div'); face.className = `die-face ${faceClass}`; let val = faceValueMap[faceClass];
+                for(let i=0; i<9; i++) {
+                    let dot = document.createElement('div'); dot.className = 'die-dot';
+                    if (dicePatterns[val].includes(i)) { dot.style.visibility = 'visible'; dot.style.backgroundColor = (val === 1 || val === 4) ? '#dc2626' : '#111111'; }
+                    face.appendChild(dot);
+                }
+                cube.appendChild(face);
+            }
+        });
+    }
+
+    function updateDieTransform(dieElement, value, index, isTumbling) {
+        if (isTumbling) {
+            let tx = (Math.random() * 30 - 15) + (index===1 ? -28 : (index===3 ? 28 : 0));
+            let ty = Math.random() * 20 - 10;
+            let rx = Math.random() * 360, ry = Math.random() * 360, rz = Math.random() * 360;
+            dieElement.style.transform = `translate3d(${tx}px, ${ty}px, 0) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
+        } else {
+            let base = rollRotations[value]; 
+            let spinOnTable = Math.random() * 90 - 45; 
+            let tx = (index-2) * 52 + (Math.random() * 6 - 3); 
+            let ty = Math.random() * 12 - 6;
+            dieElement.style.transform = `translate3d(${tx}px, ${ty}px, 0) rotateX(-50deg) rotateY(${45 + spinOnTable}deg) rotateX(${base.x}deg) rotateY(${base.y}deg) rotateZ(${base.z}deg)`;
+        }
+    }
+
+    let rollInterval;
+    function startRoll() {
+        if(gameState !== 'BETTING') return;
+        
+        let hasInvalidBet = false;
+        for (let z in bets) { if (bets[z] < (MIN_BETS[z] || DEFAULT_MIN)) { showMsg(t('min_bet')+`: ${MIN_BETS[z]||DEFAULT_MIN}`, 2500); hasInvalidBet = true; break; } }
+        if (hasInvalidBet) return;
+        if (Object.keys(bets).length === 0) { showMsg(t('pls_bet')); return; }
+        if (isClearMode) toggleClearMode(); 
+
+        // 【极速保存当次有效投注，用以后续一键再下注】
+        previousBets = JSON.parse(JSON.stringify(bets));
+
+        gameState = 'ROLLING';
+        showMsg(t('no_more'), 1500);
+        
+        const btn = document.getElementById('action-btn');
+        btn.classList.add('btn-disabled');
+        
+        document.getElementById('shaker-container').classList.add('shaking');
+        document.querySelectorAll('.die-cube').forEach(d => d.classList.add('tumbling'));
+        
+        let resWinEl = document.getElementById('res-win');
+        resWinEl.innerText = t('rolling'); resWinEl.className = "text-[11px] text-yellow-400 mt-1 font-bold animate-pulse text-center leading-tight";
+
+        rollInterval = setInterval(() => { for(let i=1; i<=3; i++) updateDieTransform(document.getElementById('die'+i), 1, i, true); }, 100);
+
+        setTimeout(() => {
+            clearInterval(rollInterval);
+            document.getElementById('shaker-container').classList.remove('shaking');
+            document.querySelectorAll('.die-cube').forEach(d => d.classList.remove('tumbling'));
+            
+            let rawDice = [ Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1 ];
+            for(let i=1; i<=3; i++) updateDieTransform(document.getElementById('die'+i), rawDice[i-1], i, false);
+
+            setTimeout(() => { calculatePayout(rawDice); }, 800);
+        }, 1500);
+    }
+
+    // === 游戏操作与下注 ===
+    function showMsg(msg, duration = 2000) {
+        const box = document.getElementById('message-box');
+        box.innerText = msg; box.style.opacity = 1;
+        if(duration > 0) setTimeout(() => box.style.opacity = 0, duration);
+    }
+
+    function selectChip(val, el) {
+        if (isClearMode) toggleClearMode(); 
+        currentChip = val;
+        document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function toggleClearMode() {
+        if (gameState !== 'BETTING') return;
+        isClearMode = !isClearMode;
+        const btn = document.getElementById('clear-mode-btn');
+        if(isClearMode) {
+            btn.style.background = 'rgba(220, 38, 38, 0.8)';
+            btn.style.color = '#fff';
+            btn.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+            document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected')); 
+        } else {
+            btn.style.background = 'var(--panel-bg)';
+            btn.style.color = 'var(--panel-text)';
+            btn.style.borderColor = 'var(--panel-border)';
+            document.querySelector(`.chip-${currentChip}`).classList.add('selected'); 
+        }
+    }
+
+    function placeBet(zoneId) {
+        if (gameState !== 'BETTING') return;
+        if (isClearMode) { if (bets[zoneId]) { balance += bets[zoneId]; delete bets[zoneId]; updateUI(); renderChips(); } return; }
+        let min = MIN_BETS[zoneId] || DEFAULT_MIN;
+        if ((bets[zoneId] || 0) === 0 && currentChip < min && ((bets[zoneId] || 0) + currentChip) < min) { showMsg(t('min_bet')+`: ${min}`); }
+        if (balance < currentChip) { showMsg(t('no_balance')); return; }
+        balance -= currentChip; bets[zoneId] = (bets[zoneId] || 0) + currentChip;
+        betHistoryStack.push({ zone: zoneId, amount: currentChip });
+        updateUI(); renderChips();
+    }
+
+    // 【全新加入：一键复制再下注】
+    function rebet() {
+        if (gameState !== 'BETTING') return;
+        if (isClearMode) toggleClearMode();
+        if (Object.keys(previousBets).length === 0) { showMsg(t('no_prev_bet')); return; }
+        
+        let totalCost = 0;
+        for (let k in previousBets) totalCost += previousBets[k];
+        if (balance < totalCost) { showMsg(t('no_balance')); return; }
+        
+        balance -= totalCost;
+        for (let k in previousBets) {
+            bets[k] = (bets[k] || 0) + previousBets[k];
+            betHistoryStack.push({ zone: k, amount: previousBets[k] });
+        }
+        updateUI(); renderChips();
+    }
+
+    function undoBet() {
+        if (gameState !== 'BETTING' || betHistoryStack.length === 0) return;
+        let lastBet = betHistoryStack.pop();
+        while (lastBet && (!bets[lastBet.zone] || bets[lastBet.zone] < lastBet.amount)) { lastBet = betHistoryStack.pop(); }
+        if (!lastBet) return;
+        bets[lastBet.zone] -= lastBet.amount;
+        if (bets[lastBet.zone] === 0) delete bets[lastBet.zone];
+        balance += lastBet.amount;
+        updateUI(); renderChips();
+    }
+
+    function clearBetsLogical() {
+        for(let k in bets) balance += bets[k];
+        bets = {}; betHistoryStack = [];
+    }
+
+    function clearBets() {
+        if(gameState !== 'BETTING') return;
+        clearBetsLogical(); updateUI(); renderChips();
+    }
+
+    function updateUI() {
+        document.getElementById('balance-display').innerText = balance;
+        document.getElementById('total-bet-display').innerText = Object.values(bets).reduce((a, b) => a + b, 0);
+    }
+
+    function renderChips() {
+        document.querySelectorAll('.chip-marker').forEach(e => e.remove());
+        for (let zoneId in bets) {
+            if (bets[zoneId] <= 0) continue;
+            let target = document.querySelector(`[data-zone="${zoneId}"]`);
+            if (target) {
+                let amt = bets[zoneId]; let marker = document.createElement('div');
+                let cls = amt>=200 ? 'chip-200' : amt>=100 ? 'chip-100' : amt>=50 ? 'chip-50' : amt>=20 ? 'chip-20' : 'chip-10';
+                marker.className = `chip-base chip-marker ${cls}`;
+                marker.innerText = amt >= 1000 ? (amt/1000).toFixed(1)+'k' : amt;
+                target.appendChild(marker);
+            }
+        }
+    }
+
+    // === 赢注高亮与生命周期 ===
+    function calculatePayout(rawDice) {
+        let sorted = [...rawDice].sort((a,b) => a-b);
+        const sum = sorted[0] + sorted[1] + sorted[2];
+        const isTriple = (sorted[0] === sorted[1] && sorted[1] === sorted[2]);
+        const isDouble = (sorted[0] === sorted[1] || sorted[1] === sorted[2]);
+        const counts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+        sorted.forEach(d => counts[d]++);
+
+        roundCounter++;
+        updateHistoryAndScreen(rawDice, sorted, sum, isTriple);
+
+        let allWinZones = [];
+        if (!isTriple) {
+            if (sum >= 4 && sum <= 10) allWinZones.push('small');
+            if (sum >= 11 && sum <= 17) allWinZones.push('big');
+        }
+        if (isTriple) { allWinZones.push('any_triple'); allWinZones.push('triple_' + sorted[0]); }
+        if (isDouble) { allWinZones.push('any_double'); let db = sorted[0]===sorted[1] ? sorted[0] : sorted[2]; allWinZones.push('double_'+db); }
+        allWinZones.push('sum_' + sum);
+        let uniques = [...new Set(sorted)];
+        for(let i=0; i<uniques.length; i++) {
+            for(let j=i+1; j<uniques.length; j++) {
+                let a = uniques[i], b = uniques[j];
+                if(a>b) { let t=a; a=b; b=t;}
+                allWinZones.push(`combo_${a}_${b}`);
+            }
+        }
+        uniques.forEach(d => allWinZones.push('single_' + d));
+
+        allWinZones.forEach(z => {
+            let el = document.querySelector(`[data-zone="${z}"]`);
+            if(el) el.classList.add('winner-glow');
+        });
+
+        let winAmt = 0; 
+        for (let zone in bets) {
+            if (allWinZones.includes(zone)) {
+                let stake = bets[zone]; let odds = 0;
+                if (zone === 'small' || zone === 'big' || zone.startsWith('single_')) odds = 1;
+                if (zone.startsWith('single_')) odds = counts[parseInt(zone.split('_')[1])];
+                if (zone === 'any_double') odds = 3; 
+                if (zone === 'any_triple') odds = 24; 
+                if (zone.startsWith('double_')) odds = 8;
+                if (zone.startsWith('triple_')) odds = 150;
+                if (zone.startsWith('sum_')) odds = sumOddsMap[sum];
+                if (zone.startsWith('combo_')) odds = 5;
+                winAmt += stake + (stake * odds);
+            }
+        }
+
+        const winMsg = document.getElementById('res-win');
+        if (winAmt > 0) { 
+            winMsg.innerText = `${t('win')}\n${winAmt}`; winMsg.className = "text-[12px] text-green-500 mt-1 font-black text-center leading-tight";
+            balance += winAmt; 
+        } else { 
+            winMsg.innerText = t('lose'); winMsg.className = "text-[11px] text-gray-500 mt-2 font-bold text-center leading-tight";
+        }
+        
+        updateUI();
+        
+        gameState = 'PAYOUT';
+        const btn = document.getElementById('action-btn');
+        btn.classList.remove('btn-disabled', 'btn-roll');
+        btn.classList.add('btn-next');
+        btn.innerText = t('next_round');
+        
+        if (balance <= 0) {
+            setTimeout(() => { document.getElementById('game-over-overlay').classList.replace('hidden', 'flex'); }, 1200);
+        }
+    }
+
+    function nextRound(forceReset = false) {
+        if (!forceReset && balance <= 0) return;
+        
+        document.querySelectorAll('.winner-glow').forEach(el => el.classList.remove('winner-glow'));
+        
+        const btn = document.getElementById('action-btn');
+        btn.classList.remove('btn-next');
+        btn.classList.add('btn-roll');
+        btn.innerText = t('roll');
+        
+        bets = {}; betHistoryStack = [];
+        updateUI(); renderChips();
+        
+        document.getElementById('res-win').innerText = t('waiting_bet');
+        document.getElementById('res-win').className = "text-[10px] text-gray-500 mt-2 font-bold text-center leading-tight";
+        gameState = 'BETTING';
+    }
+
+    function updateHistoryAndScreen(rawDice, sorted, sum, isTriple) {
+        let bgColor = isTriple ? '#16a34a' : (sum <= 10 ? '#2563eb' : '#dc2626'); 
+        resultHistory.unshift({ text: sorted.join(''), sum: sum, bgColor: bgColor });
+        if (resultHistory.length > 30) resultHistory.pop();
+        
+        renderHistoryUI();
+        
+        document.getElementById('res-dice').innerHTML = `
+            ${getUIResultDie(rawDice[0], 'bg-[#ff8fae]')}
+            ${getUIResultDie(rawDice[1], 'bg-[#6ee7b7]')}
+            ${getUIResultDie(rawDice[2], 'bg-[#93c5fd]')}
+        `;
+        document.getElementById('res-sum').innerText = sum;
+        const typeEl = document.getElementById('res-type');
+        if (isTriple) { typeEl.innerText = t('triple'); typeEl.className = "text-[14px] font-black tracking-widest text-green-500"; }
+        else if (sum <= 10) { typeEl.innerText = t('small'); typeEl.className = "text-[14px] font-black tracking-widest text-blue-500"; }
+        else { typeEl.innerText = t('big'); typeEl.className = "text-[14px] font-black tracking-widest text-red-500"; }
+    }
+
+    function renderHistoryUI() {
+        document.getElementById('history-panel').innerHTML = resultHistory.map(h => `
+            <div class="history-row">
+                <div class="history-item" style="background:${h.bgColor}">${h.text}</div>
+                <span class="font-bold text-[12px] w-[18px] text-center" style="color: var(--sum-color);">${h.sum}</span>
+            </div>
+        `).join('');
+        document.getElementById('round-num').innerText = String(roundCounter).padStart(3, '0');
+    }
+
+    window.onload = () => {
+        renderBoard(); init3DDice(); changeLang('zh');
+        updateDieTransform(document.getElementById('die1'), 1, 1, false);
+        updateDieTransform(document.getElementById('die2'), 2, 2, false);
+        updateDieTransform(document.getElementById('die3'), 3, 3, false);
+        updateHistoryAndScreen([1,2,3], [1,2,3], 6, false);
+        roundCounter = 1; renderHistoryUI(); 
+        document.getElementById('res-win').innerText = t('waiting_bet');
+        document.getElementById('res-win').className = "text-[10px] text-gray-500 mt-2 font-bold text-center leading-tight";
+    };
+
+</script>
+</body>
+</html>
